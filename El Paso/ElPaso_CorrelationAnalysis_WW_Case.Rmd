@@ -1,0 +1,687 @@
+---
+title: "El Paso Wasterwater Surveillance Time Series Correlation Analysis"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_notebook:
+    toc: yes
+---
+
+Reference: https://github.com/julianfaraway/wbequant
+
+Three ways to deal with irregularly sampled waste water data:           
+1. Interpolation - various statistical methods available           
+2. Last observation carried forward: replacing each NA with the most recent non-NA prior to it.        
+3. Aggregated weekly or bi-weekly.                
+
+In this analysis, we used the second method.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message=F)
+```
+
+
+```{r load packages}
+suppressPackageStartupMessages({
+library(readr)
+library(readxl)
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(lubridate)
+library(zoo)
+library(here) #
+library(svglite) #
+library(tidyverse)
+library(mgcv) #
+library(broom)
+library(jtools)
+library(ggpubr)
+})
+```
+
+## Data processing 
+
+- Time window: 2020-11-1 to 2022-06-1
+
+- Waste water measurements were sampled weekly (or bi-weekly; skipped during holidays)
+  - Two sheets of data for NOV 9th 2021 (used (2))      
+  - Two missing for Haskell: 1/13/22; 11/9/21     
+  - Three missing for JT: 9/15/21; 9/1/21; 9/8/21 & removed data point on 10/27/22  
+- Case data were collected daily.     
+ 
+```{r read data}
+# read in processed waste water data
+organized.data <- read_excel("Processed_data/WeeklyReports_ElPaso_CMMR(R)_2022_Processed.xlsx") %>% mutate(Date=as.Date(`Date Collected`)) %>% 
+  dplyr::rename(N1=`Copies per L waste water (N1)`, N2=`Copies per L waste water (N2)`, N1_MGD=`Copies/MGD (N1)`, N2_MGD=`Copies/MGD (N2)`) %>%
+  mutate(`WWTP Site`=ifelse(`WWTP Site`=="Fred Hurvey", "Fred Hervey", `WWTP Site`))
+#Start and end dates
+mindate = as_date("2020-11-01")
+maxdate = max(organized.data$Date, na.rm = T)
+#subset the data by WWTP
+FH<-subset(organized.data , `WWTP Site`=="Fred Hervey", select = c("Date", "N1", "N2", "N1_MGD", "N2_MGD")) %>% na.omit() %>% mutate(N1=N1, N2=N2) %>%
+  complete(Date = seq.Date(mindate, maxdate, by="day")) %>% 
+  mutate(N1 = zoo::na.locf(N1, na.rm=FALSE))
+
+Has<-subset(organized.data , `WWTP Site`=="Haskell", select = c("Date", "N1", "N2","N1_MGD", "N2_MGD")) %>% na.omit() %>% mutate(N1=N1, N2=N2) %>%
+  complete(Date = seq.Date(mindate, maxdate, by="day")) %>% 
+  mutate(N1 = zoo::na.locf(N1, na.rm=FALSE))
+
+Jth<-subset(organized.data , `WWTP Site`=="John T. Hickerson", select = c("Date", "N1", "N2","N1_MGD", "N2_MGD")) %>% na.omit() %>% mutate(N1=N1, N2=N2) %>%
+  complete(Date = seq.Date(mindate, maxdate, by="day")) %>% 
+  mutate(N1 = zoo::na.locf(N1, na.rm=FALSE))
+
+Rb<-subset(organized.data , `WWTP Site`=="Roberto Bustamante", select = c("Date", "N1", "N2","N1_MGD", "N2_MGD")) %>% na.omit() %>% mutate(N1=N1, N2=N2) %>%
+  complete(Date = seq.Date(mindate, maxdate, by="day")) %>% 
+  mutate(N1 = zoo::na.locf(N1, na.rm=FALSE))
+
+# read in processed case data by WWTP
+case <- read_excel("Processed_data/WWTP_CaseRate_processed_updated.xlsx") %>% mutate(Date=as.Date(Date))
+case <- case %>% 
+  group_by(WWTP) %>% arrange(Date) %>%
+  mutate(rate7avg=rollmean(rate, 7, fill=NA, align="right")) %>% ungroup() %>%
+  mutate(WWTP=ifelse(WWTP=="Fred Hurvey", "Fred Hervey", WWTP))
+
+```
+
+## Relationship between wastewater SARS-COV2 RNA and 7-day rolling average cases per 100ks by sites
+
+```{r fig.height=8, fig.width=5}
+FH1 <- left_join(subset(case, case$WWTP=="Fred Hervey"), FH, by="Date")
+Has1 <- left_join(subset(case, case$WWTP=="Haskell"), Has, by="Date")
+Jth1 <- left_join(subset(case, case$WWTP=="John T. Hickerson"), Jth, by="Date")
+Rb1 <-  left_join(subset(case, case$WWTP=="Roberto Bustamante"), Rb, by="Date")
+
+par(mgp=c(1.5,0.5,0), mar=c(3.1,3.1,3.1,0), pch=20, mfrow=c(2,4))
+p1 <- FH1 %>% 
+  ggplot(aes(x=N1, y = rate7avg)) + 
+  geom_point(size=0.5,alpha=0.25) +
+  scale_x_continuous(name = "Wastewater RNA concentratiion  (copies/L)") +
+  scale_y_continuous(name = "COVID-19 Case rate") +
+  geom_smooth(color='black') +ggtitle("Fred Hervey - untransformed")
+p2 <- FH1 %>% 
+  ggplot(aes(x=N1+20, y = rate7avg)) + 
+  geom_point(size=0.5,alpha=0.25) +
+  scale_x_continuous(name = "Wastewater RNA concentratiion  (copies/L)", trans = "log10") +
+  scale_y_continuous(name = "COVID-19 Case rate", trans = "log10") +
+  geom_smooth(method="lm", color='black')+ggtitle("Fred Hervey - log transformed")
+p3 <- Has1 %>%
+  ggplot(aes(x=N1, y = rate7avg)) + 
+  geom_point(size=0.5,alpha=0.25) +
+  scale_x_continuous(name = "Wastewater RNA concentratiion  (copies/L)") +
+  scale_y_continuous(name = "COVID-19 Case rate") +
+  geom_smooth(color='black') +ggtitle("Haskell- untransformed")
+p4 <- Has1 %>% 
+  ggplot(aes(x=N1+20, y = rate7avg)) + 
+  geom_point(size=0.5,alpha=0.25) +
+  scale_x_continuous(name = "Wastewater RNA concentratiion  (copies/L)", trans = "log10") +
+  scale_y_continuous(name = "COVID-19 Case rate", trans = "log10") +
+  geom_smooth(method="lm", color='black')+ggtitle("Haskell - log transformed")
+p5 <- Jth1 %>% 
+  ggplot(aes(x=N1, y = rate7avg)) + 
+  geom_point(size=0.5,alpha=0.25) +
+  scale_x_continuous(name = "Wastewater RNA concentratiion  (copies/L)") +
+  scale_y_continuous(name = "COVID-19 Case rate") +
+  geom_smooth(color='black') +ggtitle("John T. Hickerson - untransformed")
+p6 <- Jth1 %>%
+  ggplot(aes(x=N1+20, y = rate7avg)) + 
+  geom_point(size=0.5,alpha=0.25) +
+  scale_x_continuous(name = "Wastewater RNA concentratiion  (copies/L)", trans = "log10") +
+  scale_y_continuous(name = "COVID-19 Case rate", trans = "log10") +
+  geom_smooth(method="lm", color='black')+ggtitle("John T. Hickerson - log transformed")
+p7<- Rb1 %>% 
+  ggplot(aes(x=N1, y = rate7avg)) + 
+  geom_point(size=0.5,alpha=0.25) +
+  scale_x_continuous(name = "Wastewater RNA concentratiion  (copies/L)") +
+  scale_y_continuous(name = "COVID-19 Case rate") +
+  geom_smooth(color='black') +ggtitle("Roberto Bustamante - untransformed")
+p8 <- Rb1 %>%
+  ggplot(aes(x=N1+20, y = rate7avg)) + 
+  geom_point(size=0.5,alpha=0.25) +
+  scale_x_continuous(name = "Wastewater RNA concentratiion  (copies/L)", trans = "log10") +
+  scale_y_continuous(name = "COVID-19 Case rate", trans = "log10") +
+  geom_smooth(method="lm", color='black')+ggtitle("Roberto Bustamante - log transformed")
+
+sfigure2 <- ggarrange(p1,p2,p3,p4,p5,p6,p7,p8, ncol=2, nrow=4)
+
+#ggsave("Sfigure2.png", sfigure2, width = 10, height=12)
+sfigure2
+```
+
+
+## Predicting COVID-19 infection rate using concurrent wastewater measure
+
+### Fred Hervey
+```{r}
+# modeling
+#' Fit the a linear model with the variables on a log scale
+FHmod = lm(log(rate7avg) ~ log(N1), FH1)
+summ(FHmod)
+```
+
+### Haskell
+```{r}
+Hasmod = lm(log(rate7avg) ~ log(N1), Has1)
+summ(Hasmod)
+```
+
+### John T. Hickerson
+```{r}
+Jthmod = lm(log(rate7avg) ~ log(N1), Jth1)
+summ(Jthmod)
+```
+
+### Roberto Bustamante     
+```{r}
+Rbmod = lm(log(rate7avg) ~ log(N1), Rb1)
+summ(Rbmod)
+```
+
+
+
+### All data
+
+#### Correlations between N1 and incidence
+```{r}
+ww <- organized.data %>% select("Date", "N1", "N2", "N1_MGD", "N2_MGD", "WWTP Site") %>% na.omit() %>% mutate(N1=N1, N2=N2, WWTP=`WWTP Site`) %>%
+  group_by(WWTP) %>%
+  complete(Date = seq.Date(mindate, maxdate, by="day")) %>% 
+  mutate(N1 = zoo::na.locf(N1, na.rm=FALSE)) %>%
+  ungroup()
+
+all <- left_join(ww, case, by=c("WWTP", "Date"))
+#' Correlations between N1 and incidence
+all %>% 
+  group_by(WWTP) %>% 
+  summarise(incidence = cor(log(N1+1),log(ncase+1),use = "complete.obs")) %>% 
+  knitr::kable(digits=3)
+```
+
+#### Fit the model with all data
+```{r}
+#' A stronger relationship is not seen compared to the individual areas
+#' 
+#' Now fit a model
+lmodagg = lm(log(rate7avg) ~ log(N1), all)
+summ(lmodagg)
+# exp(predict(lmodagg,data.frame(N1=mean(all$N1)),interval = "prediction"))
+# #' compared to a FH only model
+# exp(predict(FHmod,data.frame(N1=mean(all$N1)),interval = "prediction"))
+```
+
+
+
+#### Varying Coefficient models
+Fit a model where each site has its own time varying intercept but the slope is in common for all:         
+$$ y = \alpha_{i}(t) + \beta(t)x $$ 
+```{r}
+#' Assemble data
+plus = all%>% 
+  filter(between(Date, as.Date("2020-11-18"),as.Date("2022-06-01"))) %>% 
+  mutate(y = log10(rate7avg),
+         x = log10(N1 + 20),
+         timet = as.numeric(Date)-18584,
+         WWTP = factor(WWTP))
+
+gmod = gam(y ~ s(timet,by=WWTP) + s(timet,by=x), data=plus)
+summary(gmod)
+check <- as.data.frame(gmod$coefficient)
+
+
+```
+
+
+```{r}
+#' Plot the coefficient functions, gray lines at Jan1, Apr1 and Jul1
+#+ allhabgam
+sites <- unique(all$WWTP)
+#par(mgp=c(1.5,0.5,0), mar=c(3.1,3.1,3.1,0), pch=20, mfrow=c(2,2))
+# for(i in 1:4){
+#   pgam = plot(gmod, rug=FALSE, xlab="Time", ylab='a(t)',
+#        main=sites[i], select=i)
+#   abline(v=c(90,180,270)+30,col=gray(0.75))
+# }
+# 
+# #+ slopegam
+# plot(gmod, rug=FALSE, xlab="Time", ylab='b(t)',
+#      select=15,scale=0)
+# abline(v=c(90,180,270)+30,col=gray(0.75))
+#par(mfrow=c(1,1))
+
+#' Generate nicer plots
+#+ allgamplot, fig.show='hide'
+#pgam = plot(gmod, pages = 1)
+pgdf = data.frame(x=unlist(map(pgam,"x")),
+                  fit=unlist(map(pgam,"fit")),
+                  se=unlist(map(pgam,"se")),
+                  WWTP = rep(c(sites,"beta"),each=100))
+pgdf$ub = pgdf$fit+2*pgdf$se
+pgdf$lb = pgdf$fit-2*pgdf$se
+#+ pgam4
+pgdf %>% filter(WWTP %in% sites[1:4]) %>% 
+  ggplot(aes(x=x)) + 
+  geom_ribbon(aes(ymin = lb, ymax = ub),fill="gray90") +
+  geom_line(aes(y=fit)) +
+  facet_wrap(~ WWTP) +
+  ylab("a(t)") +
+  scale_x_continuous(name="Date",breaks=c(0,44,134,224,314,404,494),
+                     labels=c("11/18/20","1/1/21","4/1/21","7/1/21", "10/1/21", "1/1/22", "4/1/22"))
+#+ pgamb
+pgdf %>% filter(WWTP == "beta") %>% 
+  ggplot(aes(x=x)) + 
+  geom_ribbon(aes(ymin = lb, ymax = ub),fill="gray90") +
+  geom_line(aes(y=fit)) +
+  ylab("b(t)") +
+  scale_x_continuous(name="Date",breaks=c(0,44,134,224,314,404,494),
+                     labels=c("11/18/20","1/1/21","4/1/21","7/1/21", "10/1/21", "1/1/22", "4/1/22"))
+```
+
+
+## Number of WW sampling by month      
+```{r}
+#' Look at change in sampling over time
+#+ wwtpmon
+Sfigure3 <- organized.data %>% filter(Date<as.Date("2022-06-01")) %>%
+  mutate(Mon = floor_date(Date, "month")) %>% 
+  group_by(Mon) %>% count() %>% 
+  ggplot(aes(Mon,n)) + geom_step() + geom_point()+
+  xlab("Date") + ylab("Wastewater Samples per Month")+
+  scale_x_date( date_breaks="month",date_labels = "%y-%m")+
+  theme(axis.text.x =element_text (angle=90,hjust=1, size=14),axis.text.y =element_text (size=12), axis.title.y = element_text(size=16), axis.title.x = element_text(size=16))
+Sfigure3
+#ggsave("Sfigure3.png", Sfigure3, dpi=300, height=6, width=10)
+
+# by site - panel
+Sfigure3.1 <- organized.data %>% filter(Date<as.Date("2022-06-01")) %>%
+  mutate(Mon = floor_date(Date, "month")) %>% 
+  group_by(Mon, `WWTP Site`) %>% count() %>% 
+  ggplot(aes(Mon,n)) + geom_step() + geom_point()+
+  facet_wrap(~`WWTP Site`)+
+  xlab("Date") + ylab("Wastewater Samples per Month")+
+  scale_x_date( date_breaks="month",date_labels = "%y-%m")+
+  scale_y_continuous(limits = c(0, 7), breaks = seq(0, 7, 1))+
+  theme(strip.background = element_blank(),strip.text.x = element_text(size = 16),
+        legend.text=element_text(size=14), axis.text=element_text(size=12), 
+        axis.title = element_text(size=14),axis.text.x =element_text (angle=90,hjust=1, size=12))
+Sfigure3.1
+#ggsave("Sfigure3-1.png", Sfigure3.1, dpi=300, height=8, width=12)
+
+# # by site -color NO!!!
+# Sfigure3.2 <- organized.data %>% filter(Date<as.Date("2022-06-01")) %>%
+#   mutate(Mon = floor_date(Date, "month")) %>% 
+#   group_by(Mon, `WWTP Site`) %>% count() %>% 
+#   ggplot(aes(x=Mon,y=n, color=`WWTP Site`)) + geom_step() + geom_point()+
+#   xlab("Date") + ylab("Wastewater Samples per Month")+
+#   scale_x_date( date_breaks="month",date_labels = "%y-%m")+
+#   theme(axis.text.x =element_text (angle=90,hjust=1, size=14),axis.text.y =element_text (size=12), axis.title.y = element_text(size=16), axis.title.x = element_text(size=16))
+
+```
+
+
+## Cross-correlation analysis between reported cases and WW concentration        
+
+Cross-correlation may help us identify the leading time when virus in WW started to show a pikes before the cases were increasing.    
+
+The CCF is defined as the set of correlations (height of the vertical line segments in figures below between two time series $x_t + h$ (waste water concentration) and $y_t$ (case rate) for lags $h = 0, \pm1, \pm2, \ldots$. A negative value for $h$ represents a correlation between the x-series at a time before $t$ and the y-series at time $t$.               
+The CCF helps to identify lags of $x_t$ that could be predictors of the $y_t$ series.           
+
+1. When $h < 0$ , $x$ leads $y$.            
+2. When $h > 0$ , $x$ lags $y$.       
+
+### Fred Hurvey               
+```{r}
+FH_dt <- subset(FH1, FH1$Date <= as.Date("2022-06-01") & FH1$Date >= as.Date("2020-11-18")) %>% arrange(Date)
+N1_ts <- ts(FH_dt$N1,frequency=365, start = c(2020,323))
+case_ts <- ts(FH_dt$rate,frequency=365,start=c(2020,323))
+
+## intersection (only overlapping times)
+dat_int <- ts.intersect(N1_ts, case_ts)
+## plot the ts
+plot(dat_int, main = "Time Series Plot of WW N1 and Case Infection in Fred Hurvey", yax.flip = TRUE)
+
+```
+
+#### Cross-correlogram plot         
+```{r}
+########################
+# Cross-correlogram plot
+########################
+## get the matching test and case data
+N1_ts_match <- dat_int[,"N1_ts"]
+case_ts_match <- dat_int[,"case_ts"]
+## CCF of combined data
+ccf <- ccf(N1_ts_match, case_ts_match, ylab = "Cross-correlation", lag.max=20, main="")
+#ccf
+#plot(ccf[ccf$acf>0.7])
+# infection rates are relatively high ~11 days after high WW
+ccf$lag[ccf$acf==max(ccf$acf)]*365
+
+```
+**Here one lag is one year, so the maximum correlation is at -11 days - Infection rates are relatively high around 11 days after high WW concentration**           
+
+
+#### Scatterplots of $y_t$ versus $x_{t-h}$:
+For negative lags from 0 back to a lag -15. In each plot, (WW N1 variable) is on the vertical and a past lag of infection rate is on the horizontal. Correlation values are given on each plot.         
+
+- Correlation on the top right is the cross-correlation between WW N1 at time t and Infection rate at time t-h (h=0,1...15)        
+- Red line in the plot is the lowess fit.     
+
+```{r}
+library(astsa)
+lag2.plot (N1_ts_match, case_ts_match, 15)
+```
+
+<!-- Regression models -->
+```{r}
+# alldata=ts.intersect(case_ts,caselag1=lag(case_ts,1), caselag2=lag(case_ts_match,2), N1lag5 = lag(N1_ts_match,5),
+# N1lag4=lag(N1_ts_match,4), N1lag3=lag(N1_ts_match,3), N1lag2=lag(N1_ts_match,2), N1lag1=lag(N1_ts_match,1))
+# tryit = lm(case_ts_match~N1lag1 + N1lag2+N1lag3+N1lag4+N1lag5 data = alldata)
+# summary (tryit)
+# acf2(residuals(tryit))
+```
+
+
+
+### Haskell
+```{r}
+HS_dt <- subset(Has1, Has1$Date <= as.Date("2022-06-01") & Has1$Date >= as.Date("2020-11-18")) %>% arrange(Date)
+N1_ts <- ts(HS_dt$N1, frequency=365, start = c(2020,323))
+case_ts <- ts(HS_dt$rate, frequency=365, start = c(2020,323))
+
+## intersection (only overlapping times)
+dat_int <- ts.intersect(N1_ts, case_ts)
+## plot the ts
+plot(dat_int, main = "Time Series Plot of WW and Infection in Haskell", yax.flip = TRUE)
+
+## get the matching test and case data
+N1_ts_match <- dat_int[,"N1_ts"]
+case_ts_match <- dat_int[,"case_ts"]
+## CCF of combined data
+ccf <- ccf(N1_ts_match, case_ts_match, ylab = "Cross-correlation", lag.max=20, main="")
+#ccf
+#plot(ccf[ccf$acf>0.7])
+# infection rates are relatively high ~15 days after high WW
+ccf$lag[ccf$acf==max(ccf$acf)]*365
+```
+**Infection rates are relatively high around 15 days after high WW concentration**         
+
+```{r}
+# scatterplot
+lag2.plot (N1_ts_match, case_ts_match, 19)
+```
+
+
+
+
+### John T       
+```{r}
+JT_dt <- subset(Jth1, Jth1$Date <= as.Date("2022-06-01") & Jth1$Date >= as.Date("2020-11-18")) %>% arrange(Date)
+N1_ts <- ts(JT_dt$N1, frequency=365, start = c(2020,323))
+case_ts <- ts(JT_dt$rate, frequency=365, start = c(2020,323))
+
+## intersection (only overlapping times)
+dat_int <- ts.intersect(N1_ts, case_ts)
+## plot the ts
+plot(dat_int, main = "Time Series Plot of WW and Infection in John T.", yax.flip = TRUE)
+
+## get the matching test and case data
+N1_ts_match <- dat_int[,"N1_ts"]
+case_ts_match <- dat_int[,"case_ts"]
+## CCF of combined data
+ccf <- ccf(N1_ts_match, case_ts_match, ylab = "Cross-correlation", lag.max=20, main="")
+#ccf
+
+#plot(ccf[ccf$acf>0.7])
+# infection rates are relatively high ~8 days after high WW
+ccf$lag[ccf$acf==max(ccf$acf)]*365
+
+```
+**Infection rates are relatively high around 8 days after high WW concentration**
+
+
+```{r}
+# scatterplot
+lag2.plot (N1_ts_match, case_ts_match, 11)
+```
+
+
+### Roberto Bustamante
+
+```{r}
+RB_dt <- subset(Rb1, Rb1$Date <= as.Date("2022-06-01") & Rb1$Date >= as.Date("2020-11-18")) %>% arrange(Date)
+N1_ts <- ts(RB_dt$N1, frequency=365, start = c(2020,323))
+case_ts <- ts(RB_dt$rate, frequency=365, start = c(2020,323))
+
+## intersection (only overlapping times)
+dat_int <- ts.intersect(N1_ts, case_ts)
+## plot the ts
+plot(dat_int, main = "Time Series Plot of WW and Infection in Roberto Bustamante", yax.flip = TRUE)
+
+## get the matching test and case data
+N1_ts_match <- dat_int[,"N1_ts"]
+case_ts_match <- dat_int[,"case_ts"]
+## CCF of combined data
+ccf <- ccf(N1_ts_match, case_ts_match, ylab = "Cross-correlation", lag.max=20, main="")
+#ccf
+#plot(ccf[ccf$acf>0.7])
+# infection rates are relatively high ~8 days after high WW
+ccf$lag[ccf$acf==max(ccf$acf)]*365
+```
+**Infection rates are relatively high around 8 days after high WW concentration**
+
+
+```{r}
+
+# scatterplot
+lag2.plot (N1_ts_match, case_ts_match, 11)
+```
+
+
+
+
+## Lagged Models for Prediction       
+```{r}
+#' 
+#' Can we predict the future? Try lagging the N1 variable:
+#' 
+timewindow = 30
+ldf = tibble(lag = 0:timewindow, r2 = rep(NA, timewindow+1),
+             se = rep(NA,timewindow+1))
+
+for(i in 0:timewindow){
+  all %>% mutate(N1lag = lag(N1,i)) -> lag
+  lmodlag = lm(log(rate7avg) ~ log(N1lag+20), lag)
+  gd = glance(lmodlag)
+  ldf$r2[i+1] = gd$r.squared
+  ldf$se[i+1] = gd$sigma
+}
+
+ldf #%>% knitr::kable(digits = 3)
+ggplot(ldf) + geom_line(aes(x=lag, y=r2)) + geom_vline(xintercept=7, color="red")
+```
+
+```{r}
+#' Consider trying to predict a week ahead:
+
+all %>% mutate(rollperlag = lag(rate7avg,7)) -> lag
+lmodlag7 = lm(log(rate7avg) ~ log(rollperlag), lag)
+glance(lmodlag7)[c('r.squared','sigma')]
+
+```
+
+```{r}
+#' This model predicts a week ahead using current cases. We can
+#' see this works better than using N1. Now suppose
+#' we have the current N1 count and we add this information to the model:
+#' 
+#' 
+all %>% #group_by(WWTP) %>% 
+  mutate(rollperlag = lag(rate7avg,7),
+         N1lag7 = lag(N1,7)) -> lag
+lmodlagcase7 = lm(log(rate7avg) ~ (log(rollperlag) + log(N1lag7+20)), lag)
+glance(lmodlagcase7)[c('r.squared','sigma')]
+```
+
+## Prediction by site
+
+### Fred Hervey
+```{r}
+
+timewindow = 30
+ldf = tibble(lag = 0:timewindow, r2 = rep(NA, timewindow+1),
+             se = rep(NA,timewindow+1))
+
+for(i in 0:timewindow){
+  FH1 %>% mutate(N1lag = lag(N1,i)) -> lag
+  lmodlag = lm(log(rate7avg) ~ log(N1lag+20), lag)
+  gd = glance(lmodlag)
+  ldf$r2[i+1] = gd$r.squared
+  ldf$se[i+1] = gd$sigma
+}
+ldf1 <- ldf %>% mutate(WWTP="Fred Hervey",Max=ifelse(r2==max(r2), "Yes", "No")) #%>% knitr::kable(digits = 3)
+
+
+g1 <- ggplot(ldf) + 
+  geom_line(aes(x=lag, y=r2, colour="R2"))+ 
+  geom_line(aes(x=lag, y=se, colour="SE"), data=ldf)+
+  #geom_point(aes(x=lag, y=se/2, color="blue"))+geom_line(color="blue")+
+  #scale_color_manual(name = NULL, values = c("R2" = "red", "SE"="blue")) +
+  labs(x="Lag (days)", y=expression(R^2), color="")+
+  scale_x_continuous(breaks=c(0,5,10,15,20,25,30))+
+  ggtitle("Fred Hervey")
+  # scale_y_continuous(   # Custom the Y scales:
+  #   name = "R2", # Features of the first axis
+  #   sec.axis = sec_axis(trans=~.*1.25, name="SE"))+ # Add a second axis and specify its features
+
+FH1 %>% mutate(rollperlag = lag(rate7avg,7)) -> lag
+lmodlag7 = lm(log(rate7avg) ~ log(rollperlag), lag)
+glance(lmodlag7)[c('r.squared','sigma')]
+
+FH1 %>% #group_by(WWTP) %>% 
+  mutate(rollperlag = lag(rate7avg,7),
+         N1lag7 = lag(N1,7)) -> lag
+lmodlagcase7 = lm(log(rate7avg) ~ (log(rollperlag) + log(N1lag7+20)), lag)
+glance(lmodlagcase7)[c('r.squared','sigma')]
+```
+
+### Haskell
+```{r}
+timewindow = 30
+ldf = tibble(lag = 0:timewindow, r2 = rep(NA, timewindow+1),
+             se = rep(NA,timewindow+1))
+
+for(i in 0:timewindow){
+  Has1 %>% mutate(N1lag = lag(N1,i)) -> lag
+  lmodlag = lm(log(rate7avg) ~ log(N1lag+20), lag)
+  gd = glance(lmodlag)
+  ldf$r2[i+1] = gd$r.squared
+  ldf$se[i+1] = gd$sigma
+}
+ldf2 <- ldf %>% mutate(WWTP="Haskell",Max=ifelse(r2==max(r2), "Yes", "No"))#%>% knitr::kable(digits = 3)
+g2 <- ggplot(ldf) + 
+  geom_line(aes(x=lag, y=r2, colour="R2"))+ 
+  geom_line(aes(x=lag, y=se, colour="SE"), data=ldf)+
+  #geom_point(aes(x=lag, y=se/2, color="blue"))+geom_line(color="blue")+
+  #scale_color_manual(name = NULL, values = c("R2" = "red", "SE"="blue")) +
+  labs(x="Lag (days)", y=expression(R^2), color="")+
+  scale_x_continuous(breaks=c(0,5,10,15,20,25,30))+
+  ggtitle("Haskell")
+
+Has1 %>% mutate(rollperlag = lag(rate7avg,7)) -> lag
+lmodlag7 = lm(log(rate7avg) ~ log(rollperlag), lag)
+glance(lmodlag7)[c('r.squared','sigma')]
+
+Has1 %>% #group_by(WWTP) %>% 
+  mutate(rollperlag = lag(rate7avg,7),
+         N1lag7 = lag(N1,7)) -> lag
+lmodlagcase7 = lm(log(rate7avg) ~ (log(rollperlag) + log(N1lag7+20)), lag)
+glance(lmodlagcase7)[c('r.squared','sigma')]
+```
+
+### John T.
+```{r}
+timewindow = 30
+ldf = tibble(lag = 0:timewindow, r2 = rep(NA, timewindow+1),
+             se = rep(NA,timewindow+1))
+
+for(i in 0:timewindow){
+  Jth1 %>% mutate(N1lag = lag(N1,i)) -> lag
+  lmodlag = lm(log(rate7avg) ~ log(N1lag+20), lag)
+  gd = glance(lmodlag)
+  ldf$r2[i+1] = gd$r.squared
+  ldf$se[i+1] = gd$sigma
+}
+ldf3 <- ldf %>% mutate(WWTP="John T. Hickerson", Max=ifelse(r2==max(r2), "Yes", "No"))#%>% knitr::kable(digits = 3)
+g3 <- ggplot(ldf) + 
+  geom_line(aes(x=lag, y=r2, colour="R2"))+ 
+  geom_line(aes(x=lag, y=se, colour="SE"), data=ldf)+
+  #geom_point(aes(x=lag, y=se/2, color="blue"))+geom_line(color="blue")+
+  #scale_color_manual(name = NULL, values = c("R2" = "red", "SE"="blue")) +
+  labs(x="Lag (days)", y=expression(R^2), color="")+
+  scale_x_continuous(breaks=c(0,5,10,15,20,25,30))+
+  ggtitle("John T. Hickerson")
+
+Jth1 %>% mutate(rollperlag = lag(rate7avg,7)) -> lag
+lmodlag7 = lm(log(rate7avg) ~ log(rollperlag), lag)
+glance(lmodlag7)[c('r.squared','sigma')]
+
+Jth1 %>% #group_by(WWTP) %>% 
+  mutate(rollperlag = lag(rate7avg,7),
+         N1lag7 = lag(N1,7)) -> lag
+lmodlagcase7 = lm(log(rate7avg) ~ (log(rollperlag) + log(N1lag7+20)), lag)
+glance(lmodlagcase7)[c('r.squared','sigma')]
+```
+
+### Roberto Bustamante 
+```{r}
+timewindow = 30
+ldf = tibble(lag = 0:timewindow, r2 = rep(NA, timewindow+1),
+             se = rep(NA,timewindow+1))
+
+for(i in 0:timewindow){
+  Rb1 %>% mutate(N1lag = lag(N1,i)) -> lag
+  lmodlag = lm(log(rate7avg) ~ log(N1lag+20), lag)
+  gd = glance(lmodlag)
+  ldf$r2[i+1] = gd$r.squared
+  ldf$se[i+1] = gd$sigma
+}
+ldf4 <- ldf %>% mutate(WWTP="Roberto Bustamante",Max=ifelse(r2==max(r2), "Yes", "No")) #%>% knitr::kable(digits = 3)
+g4 <- ggplot(ldf) + 
+  geom_line(aes(x=lag, y=r2, colour="R2"))+ 
+  geom_line(aes(x=lag, y=se, colour="SE"), data=ldf)+
+  #geom_point(aes(x=lag, y=se/2, color="blue"))+geom_line(color="blue")+
+  #scale_color_manual(name = NULL, values = c("R2" = "red", "SE"="blue")) +
+  labs(x="Lag (days)", y=expression(R^2), color="")+
+  scale_x_continuous(breaks=c(0,5,10,15,20,25,30))+
+  ggtitle("Roberto Bustamante")
+
+Rb1 %>% mutate(rollperlag = lag(rate7avg,7)) -> lag
+lmodlag7 = lm(log(rate7avg) ~ log(rollperlag), lag)
+glance(lmodlag7)[c('r.squared','sigma')]
+
+Rb1 %>% #group_by(WWTP) %>% 
+  mutate(rollperlag = lag(rate7avg,7),
+         N1lag7 = lag(N1,7)) -> lag
+lmodlagcase7 = lm(log(rate7avg) ~ (log(rollperlag) + log(N1lag7+20)), lag)
+glance(lmodlagcase7)[c('r.squared','sigma')]
+```
+
+```{r}
+ldf_all <- bind_rows(ldf1, ldf2, ldf3, ldf4)
+Figure3 <-ggplot(ldf_all) + 
+  geom_line(aes(x=lag, y=r2, colour="R2"))+ 
+  geom_point(aes(x=lag, y=r2),color="Red", data=subset(ldf_all, ldf_all$Max=="Yes"))+
+  geom_line(aes(x=lag, y=se, colour="SE"))+
+  facet_wrap(~WWTP, nrow=2, ncol=2)+
+  #geom_point(aes(x=lag, y=se/2, color="blue"))+geom_line(color="blue")+
+  #scale_color_manual(name = NULL, values = c("R2" = "red", "SE"="blue")) +
+  labs(x="Lag (days)", y=expression(R^2), color="")+
+  scale_x_continuous(breaks=c(0,5,10,15,20,25,30))+
+  theme_bw()+
+  theme(strip.background = element_blank(),strip.text.x = element_text(size = 16),
+        legend.text=element_text(size=14), axis.text=element_text(size=12), 
+        axis.title = element_text(size=14))
+Figure3
+#ggsave("Figure3.png", Figure3, dpi=300, width=10, height=7)
+```
+
+

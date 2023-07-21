@@ -1,0 +1,336 @@
+---
+title: "El Paso Wasterwater Surveillance Time Series Analysis"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_notebook:
+    toc: yes
+---
+
+
+**Change of this version** - this sessions briefly outline the changes you have made compared to earlier version. For example,
+
+1. Use Model 3 to extract the random effects with temporal changes; 
+
+2. Added the confidence intervals (using the conditional errors) in the output data
+
+3. Some unused code was kept at the later part of the script (after Under construction)
+
+
+
+**Analysis Objective**: Process, analyze the time series data from WW Surveillance collected from El Paso, Texas 
+1. Process the data from multiple excel sheets to a combined dataset (long format)
+
+2. Exploratory analysis of time series figures with WW concentration 
+
+3. Exploratory analysis of time series figures with COVID reported case data 
+
+4. Cross-correlation between the case and WW concentration - see this link for reading https://online.stat.psu.edu/stat510/lesson/8/8.2
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#install.packages("xts"); install.packages("dygraphs"); install.packages("feasts")
+library(feasts)
+library(tsibble)
+library(lubridate)
+library(ggplot2)
+library(dplyr) 
+library(viridis) 
+library(lubridate) 
+library(ggExtra) 
+library(tidyr) 
+library(lubridate)
+library(dygraphs)
+library(xts)
+library(tidyverse)
+library(readxl)
+library(writexl)
+library(janitor)
+library(ggpubr)
+```
+
+### Data processing
+Read in raw data and export an organized dataset. Time framework is between XXX and XXX.
+```{r}
+#loading and cleaning dataset 
+#sheet_names <- excel_sheets("/Users/chaojerry/Downloads/WeeklyReports_ElPaso_Mezzari_2022 (1).xlsx") 
+#Date <- lapply(sheet_names, function(x) { #as.data.frame(read_excel("/Users/chaojerry/Downloads/WeeklyReports_ElPaso_Mezzari_2022 (1).xlsx", sheet = x)) } )
+#names(Date) <- sheet_names
+#head(Date$`Weekly Results - 26Jan22`)
+#organized.data<-bind_rows(Date)
+#write_xlsx(organized.data,"/Users/chaojerry/Downloads/WeeklyReports_ElPaso_Mezzari_2022_organized2.xlsx")
+organized.data <- read_excel("WeeklyReports_ElPaso_Mezzari_2022_organized.xlsx", sheet=1)
+sample_n(organized.data, 10) %>% DT::datatable()
+```
+
+#### Explorary analysis with the the WW concentration
+```{r}
+#subset the data
+sub<- organized.data[ which(organized.data$`WWTP Site`=='Fred Hurvey') ,]
+FH<-subset(organized.data , `WWTP Site`=="Fred Hurvey", select = c("WWTP Site", "Date Collected", "N1 Cт", "N2 CT"))
+Has<-subset(organized.data , `WWTP Site`=="Haskell", select = c("WWTP Site", "Date Collected", "N1 Cт", "N2 CT"))
+Jth<-subset(organized.data , `WWTP Site`=="John T. Hickerson", select = c("WWTP Site", "Date Collected", "N1 Cт", "N2 CT"))
+Rb<-subset(organized.data , `WWTP Site`=="Roberto Bustamante", select = c("WWTP Site", "Date Collected", "N1 Cт", "N2 CT"))
+```
+
+For the figures below I modified the following 1) legends shortened to "N1" and "N2" and 2) no need to plot all dates - I modified to print every 4 weeks in the label. 
+
+```{r}
+FH.h<-FH[,2:4]
+FH.h<- na.omit(FH.h)
+FH.h$`Date Collected` <- as.Date(FH.h$`Date Collected`, format = "%Y-%m-%d")
+FH.ts <- xts(x = FH.h[,-1], order.by = FH.h$`Date Collected`)
+
+
+Has<- na.omit(Has)
+Has$`Date Collected` <- as.Date(Has$`Date Collected`, format = "%Y-%m-%d")
+Has.ts <- xts(x = Has[,c(2:4)], order.by = Has$`Date Collected`)
+
+
+Jth<- na.omit(Jth)
+Jth$`Date Collected` <- as.Date(Jth$`Date Collected`, format = "%Y-%m-%d")
+Jth.ts <- xts(x = Jth[,c(2:4)], order.by = Jth$`Date Collected`)
+
+
+Rb<- na.omit(Rb)
+Rb$`Date Collected` <- as.Date(Rb$`Date Collected`, format = "%Y-%m-%d")
+Rb.ts <- xts(x = Rb[,c(2:4)], order.by = Rb$`Date Collected`)
+plot.Rb<-dygraph(Rb.ts,main="Roberto Bustamante")
+
+
+break.vec <- c(seq(from = as.Date("2021-04-07"), to = as.Date("2022-03-02"), by = "week"))
+
+p.F <- ggplot(FH.h, aes(x=`Date Collected`))+
+            geom_line(aes(y = `N1 Cт`, colour = "N1")) +
+              geom_line(aes(y=`N2 CT`,colour="N2"))+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10),limits = c(28,44))
+
+### here instead of print every week, 
+a <-p.F+labs(title="Fred Hurvey",x ="", y = "amplification cycles",colour=NULL)+
+  scale_x_date(breaks = break.vec, date_breaks="4 weeks", date_labels = "%y-%m-%d")+ 
+  theme(legend.position=c(0.85,0.9),legend.text = element_text(size=7),
+        axis.text.x =element_text (angle=45,hjust=1))
+
+
+p.H<-ggplot(Has, aes(x=`Date Collected`))+
+  geom_line(aes(y = `N1 Cт`, colour = "N1")) +
+  geom_line(aes(y=`N2 CT`,colour="N2"))+scale_y_continuous(breaks = scales::pretty_breaks(n = 10),limits = c(28,44))
+  
+b<-p.H+labs(title="Haskell",x ="", y = "amplification cycles",colour=NULL)+
+  scale_x_date(breaks = break.vec, date_breaks="4 weeks", date_labels = "%y-%m-%d")+ 
+  theme(legend.position=c(0.85,0.9),legend.text = element_text(size=7),axis.text.x =element_text (angle=45,hjust=1))
+
+
+p.R<-ggplot(Rb, aes(x=`Date Collected`))+
+  geom_line(aes(y = `N1 Cт`, colour = "N1")) +
+  geom_line(aes(y=`N2 CT`,colour="N2"))+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10),limits = c(28,44))
+
+c<-p.R+labs(title="Roberto Bustamante",x ="", y = "amplification cycles",colour=NULL)+
+  scale_x_date(breaks = break.vec, date_breaks="4 weeks", date_labels = "%y-%m-%d")+ theme(legend.position=c(0.75,0.9),legend.text = element_text(size=7),axis.text.x =element_text (angle=45,hjust=1))
+
+
+p.J<-ggplot(Jth, aes(x=`Date Collected`))+
+  geom_line(aes(y = `N1 Cт`, colour = "N1")) +
+  geom_line(aes(y=`N2 CT`,colour="N2"))+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10),limits = c(28,44))
+
+d<-p.J+labs(title="John T. Hickerson",x ="", y = "amplification cycles",colour=NULL)+
+  scale_x_date(breaks = break.vec, date_breaks="4 weeks", date_labels = "%y-%m-%d")+ 
+  theme(legend.position=c(0.85,0.9), legend.text = element_text(size=7),axis.text.x =element_text (angle=45,hjust=1))
+
+ggarrange(a,b,c,d, ncol = 2, nrow = 2)
+
+```
+
+
+```{r}
+#align the date's name
+names(Rb)[names(Rb) == "Date Collected"] <- "Date"
+names(FH.h)[names(FH.h) == "Date Collected"] <- "Date"
+names(Jth)[names(Jth) == "Date Collected"] <- "Date"
+names(Has)[names(Has) == "Date Collected"] <- "Date"
+```
+
+
+### Time series analysis with the reported number of cases
+
+Looking I see the variable names still need additional cleaning. 
+
+```{r}
+#loading and cleaning case dataset
+my_data2 <- read_excel("WWTP_ZCTA_3-3-22 (3).xlsx",sheet="WWTP Normalized",col_names = FALSE)
+#str(my_data2)
+#t(my_data2)
+myData.df <- as.data.frame(t(my_data2), stringsAsFactors=FALSE)
+names(myData.df) <- myData.df[2,]
+myData.df<-myData.df[-1:-2,c(-2,-7,-8)]
+myData.df$Date<-excel_numeric_to_date(as.numeric(as.character(myData.df$Date)), date_system = "modern")
+dplr <- full_join(Rb, myData.df, by=c("Date"))
+```
+
+
+For the figures, can we over lay the WW time series and the case data (perhaps case data y-axis on the right), to see how the trends correlate? Looks like we need to do this for each facility (i.e., Fred Hurvey, Haskell etc)
+
+```{r}
+myData.df$Hervey<-as.numeric(myData.df$Hervey)
+myData.df$`NW/John T.`<-as.numeric(myData.df$`NW/John T.`)
+myData.df$Haskell<-as.numeric(myData.df$Haskell)
+myData.df$Bustamante<-as.numeric(myData.df$Bustamante)
+break.vec <- c(seq(from = as.Date("2021-03-22"), to = as.Date("2022-1-27"),by = "week"))
+
+case <- ggplot(myData.df, aes(x=Date))+
+  geom_line(aes(y = `NW/John T.`, colour = "NW/John"))+geom_line(aes(y=Hervey,colour="Harvey"))+geom_line(aes(y=Haskell,colour="Haskell"))+geom_line(aes(y=Bustamante,colour="Bust"))+scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+
+
+timeseries.case<-case+labs(title="case",x ="Date", y = "case",colour=NULL)+scale_x_date(breaks = break.vec, date_labels = "%y-%m-%d")+ theme(legend.position=c(0.8,0.9),legend.text = element_text(size=6),axis.text.x =element_text (angle=45,hjust=1))
+
+ggarrange(a,b,c,d,timeseries.case, ncol = 3, nrow = 2)
+```
+
+### Correlation analysis 
+Briefly describe the analysis - for example, let $y_{1t}$ and $y_{t}$ describe the two time series variables for $y_1$ and $y_2$, blah blah blah.
+
+#### Correlation analysis of Hasketll and N1
+```{r}
+#correlation analysis:Haskell and N1 CT
+stackoverflow_HN1 <- dplr%>%
+  dplyr::select(Date,`N1 Cт`, Haskell)
+stackoverflow_HN1<-stackoverflow_HN1[complete.cases(stackoverflow_HN1),]#cleaning data: delete NA
+
+stackOverflowts <- ts(data = stackoverflow_HN1[, c("Haskell","N1 Cт")], # selecting 2 variables
+                       start = c(2021, 04), # start date
+                       end = c(2022, 1), # end date 
+                       frequency = 52)
+
+par(mfrow = c(2, 2))
+# acf Haskell time series
+stackOverflowts[, c("Haskell")] %>% 
+  acf(lag.max = 300, 
+      main = "Autocorrelation Plot - Haskell")
+
+# pacf Haskell time series
+stackOverflowts[, c("Haskell")] %>%
+  pacf(lag.max = 300,
+       main = "Partial Autocorrelation Plot - Haskell")
+
+
+# acf N1 Cт time series
+stackOverflowts[, c("N1 Cт")] %>% 
+  acf(lag.max = 300, 
+      main = "Autocorrelation Plot - N1 Cт")
+
+# pacf N1 Cт time series
+stackOverflowts[, c("N1 Cт")] %>%
+  pacf(lag.max = 300,
+       main = " N1 Cт")
+```
+```{r}
+#correlation analysis: Bustamante and N1 CT
+stackoverflow_RN1 <- dplr%>%
+  dplyr::select(Date,`N1 Cт`, Bustamante)
+
+stackoverflow_RN1<-stackoverflow_RN1[complete.cases(stackoverflow_RN1),]#cleaning data:delete NA
+stackOverflowts1 <- ts(data = stackoverflow_RN1[, c("Bustamante","N1 Cт")], # selecting 2 variables
+                      start = c(2021, 04), # start date
+                      end = c(2022, 1), # end date 
+                      frequency = 52)
+
+par(mfrow = c(2, 2))
+# acf Bustamante time series
+stackOverflowts1[, c("Bustamante")] %>% 
+  acf(lag.max = 300, 
+      main = "Autocorrelation Plot - Bustamante")
+
+# pacf  Bustamante time series
+stackOverflowts1[, c("Bustamante")] %>%
+  pacf(lag.max = 300,
+       main = "Partial Autocorrelation Plot - Bustamante")
+
+
+# acf N1 Cт time series
+stackOverflowts1[, c("N1 Cт")] %>% 
+  acf(lag.max = 300, 
+      main = "Autocorrelation Plot - N1 Cт")
+
+# pacf N1 Cт time series
+stackOverflowts1[, c("N1 Cт")] %>%
+  pacf(lag.max = 300,
+       main = " N1 Cт")
+
+```
+
+
+```{r}
+#correlation analysis:  Hervey and N1 CT
+stackoverflow_HEN1 <- dplr%>%
+  dplyr::select(Date,`N1 Cт`, Hervey)
+stackoverflow_HEN1<-stackoverflow_HEN1[complete.cases(stackoverflow_HEN1),]#cleaning data: delete NA
+
+stackOverflowts2 <- ts(data = stackoverflow_HEN1[, c("Hervey","N1 Cт")], # selecting 2 variables
+                       start = c(2021, 04), # start date
+                       end = c(2022, 1), # end date 
+                       frequency = 52)
+
+par(mfrow = c(2, 2))
+# acf Hervey time series
+stackOverflowts2[, c("Hervey")] %>% 
+  acf(lag.max = 300, 
+      main = "Autocorrelation Plot - Hervey")
+
+# pacf  Hervey time series
+stackOverflowts2[, c("Hervey")] %>%
+  pacf(lag.max = 300,
+       main = "Partial Autocorrelation Plot - Hervey")
+
+
+# acf N1 Cт time series
+stackOverflowts2[, c("N1 Cт")] %>% 
+  acf(lag.max = 300, 
+      main = "Autocorrelation Plot - N1 Cт")
+
+# pacf N1 Cт time series
+stackOverflowts2[, c("N1 Cт")] %>%
+  pacf(lag.max = 300,
+       main = " N1 Cт")
+```
+
+#### Correlation analysis: NW/John T Hervey and N1 CT
+```{r}
+stackoverflow_NN1 <- dplr%>%
+  dplyr::select(Date,`N1 Cт`, `NW/John T.`)
+stackoverflow_NN1<-stackoverflow_NN1[complete.cases(stackoverflow_NN1),]#cleaning data
+
+stackOverflowts3 <- ts(data = stackoverflow_NN1[, c("NW/John T.","N1 Cт")], # selecting 2 variables
+                       start = c(2021, 04), # start date
+                       end = c(2022, 1), # end date 
+                       frequency = 52)
+par(mfrow = c(2, 2))
+# acf `NW/John T.` time series
+stackOverflowts3[, c("NW/John T.")] %>% 
+  acf(lag.max = 300, 
+      main = "Autocorrelation Plot - NW/John T.")
+
+# pacf  `NW/John T.` time series
+stackOverflowts3[, c("NW/John T.")] %>%
+  pacf(lag.max = 300,
+       main = "Partial Autocorrelation Plot - `NW/John T.`")
+
+
+# acf N1 Cт time series
+stackOverflowts3[, c("N1 Cт")] %>% 
+  acf(lag.max = 300, 
+      main = "Autocorrelation Plot - N1 Cт")
+
+# pacf N1 Cт time series
+stackOverflowts3[, c("N1 Cт")] %>%
+  pacf(lag.max = 300,
+       main = " N1 Cт")
+```
+
+### Cross-correlation analysis between reported cases and WW concentration
+Kehe - I think cross-correlation may help us identify the leading time when virus in WW started to show a pikes before the cases were increasing. 
+
+

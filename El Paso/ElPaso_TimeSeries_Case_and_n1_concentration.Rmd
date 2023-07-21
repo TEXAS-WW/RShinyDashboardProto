@@ -1,0 +1,478 @@
+---
+title: "El Paso Wasterwater Surveillance Time Series Analysis"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_notebook:
+    toc: yes
+---
+**Change of this version** (7/1/2022)
+
+1. Updated the data until 5/30/2022
+
+2. Changed measure of waste water concentration to "per L"
+
+2. Changed figure labeling
+
+
+**Analysis Objective**: Process, analyze the time series data from WW Surveillance collected from El Paso, Texas              
+
+1. Process the data from multiple excel sheets to a combined dataset (long format)
+
+2. Exploratory analysis of time series figures with WW concentration 
+
+3. Exploratory analysis of time series figures with COVID reported case data 
+
+4. Cross-correlation between the case and WW concentration - see this link for reading https://online.stat.psu.edu/stat510/lesson/8/8.2        
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message=F)
+```
+
+```{r}
+#install.packages("xts"); install.packages("dygraphs"); install.packages("feasts")
+suppressPackageStartupMessages({
+library(feasts)
+library(tsibble)
+library(lubridate)
+library(ggplot2)
+library(dplyr) 
+library(viridis) 
+library(lubridate) 
+library(ggExtra) 
+library(tidyr) 
+library(dygraphs)
+library(xts)
+library(tidyverse)
+library(readxl)
+library(writexl)
+library(janitor)
+library(ggpubr)
+  })
+```
+
+# Data processing        
+Read in raw data and export an organized dataset. Time framework is between 6/22/2020 and 6/1/2022.       
+```{r}
+# read in processed WWTP data
+organized.data <- read_excel("Processed_data/WeeklyReports_ElPaso_CMMR(R)_2022_Processed.xlsx") %>% mutate(Date=as.Date(`Date Collected`)) 
+sample_n(organized.data[,-c(12:15)], 10) %>% knitr::kable()
+```
+* Sample extraction volume: 300ul; RNA elution: 100ul; PCR input volume: 10ul             
+* Conversion: $50 ml$ --> $1 ml$ then $300 ul$ --> $100 ul$, so the conversion factor is 150.      
+* copies per L waste is calculated from quantities for $10 ul$ volume into PCR (PCR input volume):
+                                    $((copies/10 ul RT-PCR)*100,000)/150$
+* Copies per MGD is calculated using copies per L waste water and average flow rate
+
+* What does Ct mean?
+In a real time PCR assay a positive reaction is detected by accumulation of a fluorescent signal. The Ct (cycle threshold) is defined as the number of cycles required for the fluorescent signal to cross the threshold (ie exceeds background level). **Ct levels are inversely proportional to the amount of target nucleic acid in the sample (ie the lower the Ct level the greater the amount of target nucleic acid in the sample)**
+  - Cts < 29 are strong positive reactions indicative of abundant target nucleic acid in the sample
+  - Cts of 30-37 are positive reactions indicative of moderate amounts of target nucleic acid
+  - Cts of 38-40 are weak reactions indicative of minimal amounts of target nucleic acid which could represent an infection state or environmental contamination.
+
+
+
+# Explorary analysis with the the WW concentration (Copies per liter waste water)   
+```{r}
+organized.data <- organized.data %>% dplyr::rename(N1=`Copies per L waste water (N1)`, N2=`Copies per L waste water (N2)`,
+                                                   N1_MGD=`Copies/MGD (N1)`, N2_MGD=`Copies/MGD (N2)`)
+#subset the data by WWTP
+#sub<- organized.data[ which(organized.data$`WWTP Site`=='Fred Hurvey') ,]
+FH<-subset(organized.data , `WWTP Site`=="Fred Hurvey", select = c("Date", "N1", "N2", "N1_MGD", "N2_MGD")) %>% na.omit() %>% mutate(N1=N1/10^5, N2=N2/10^5)
+Has<-subset(organized.data , `WWTP Site`=="Haskell", select = c("Date", "N1", "N2","N1_MGD", "N2_MGD")) %>% na.omit() %>% mutate(N1=N1/10^5, N2=N2/10^5)
+Jth<-subset(organized.data , `WWTP Site`=="John T. Hickerson", select = c("Date", "N1", "N2","N1_MGD", "N2_MGD")) %>% na.omit() %>% mutate(N1=N1/10^5, N2=N2/10^5)
+Rb<-subset(organized.data , `WWTP Site`=="Roberto Bustamante", select = c("Date", "N1", "N2","N1_MGD", "N2_MGD")) %>% na.omit() %>% mutate(N1=N1/10^5, N2=N2/10^5)
+```
+
+
+For the figures below I modified the following 1) legends shortened to "N1" and "N2" and 2) no need to plot all dates - I modified to print every 4 weeks in the label. 
+ 
+```{r}
+library(ggsci)
+# convert to xts objects for plotting
+# FH.ts <- xts(x = FH, order.by = FH$Date)
+# Has.ts <- xts(x = Has, order.by = Has$Date)
+# Jth.ts <- xts(x = Jth, order.by = Jth$Date)
+# Rb.ts <- xts(x = Rb, order.by = Rb$Date)
+#plot.Rb<-dygraph(Rb.ts,main="Roberto Bustamante")
+
+break.vec <- c(seq(from = as.Date("2021-11-18"), to = as.Date("2022-06-01"), by = "week"))
+
+#log transfer
+#FH$N1 <- log(FH$N1); FH$N2 <- log(FH$N2)
+## plot the N1 and N2 CT value by WWTP
+# Fred Hurvey
+p.F <- ggplot(FH, aes(x=Date))+
+            geom_line(aes(y = N1, colour = "N1")) +
+              geom_line(aes(y=N2, colour="N2"))+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+### here instead of print every week, 
+a <-p.F+labs(title="Fred Hurvey",x ="", y = "Waste water concentration (cp/L) in 10k",colour=NULL)+
+  scale_x_date(breaks = break.vec, date_breaks="4 weeks", date_labels = "%y-%m-%d")+ scale_color_jama()+
+  theme(legend.position=c(0.9,0.9),legend.text = element_text(size=7),
+        axis.text.x =element_text (angle=45,hjust=1, size=6),axis.text.y =element_text (size=6), axis.title.y = element_text(size=7))
+
+
+# Haskell
+p.H<-ggplot(Has, aes(x=Date))+
+  geom_line(aes(y = `N1`, colour = "N1")) +
+  geom_line(aes(y=`N2`,colour="N2"))+scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+  
+b<-p.H+labs(title="Haskell",x ="", y = "Waste water concentration (cp/L) in 10k",colour=NULL)+
+  scale_x_date(breaks = break.vec, date_breaks="4 weeks", date_labels = "%y-%m-%d")+  scale_color_jama()+
+  theme(legend.position=c(0.9,0.9),legend.text = element_text(size=7),axis.text.x =element_text (angle=45,hjust=1, size=6), 
+        axis.text.y =element_text (size=6), axis.title.y = element_text(size=7))
+# Roberto Bustamante
+p.R<-ggplot(Rb, aes(x=Date))+
+  geom_line(aes(y = `N1`, colour = "N1")) +
+  geom_line(aes(y=`N2`,colour="N2"))+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+
+c<-p.R+labs(title="Roberto Bustamante",x ="", y = "Waste water concentration (cp/L) in 10k",colour=NULL)+ scale_color_jama()+
+  scale_x_date(breaks = break.vec, date_breaks="4 weeks", date_labels = "%y-%m-%d")+ theme(legend.position=c(0.9,0.9),legend.text = element_text(size=7),axis.text.x =element_text (angle=45,hjust=1, size=6), axis.text.y =element_text (size=6),axis.title.y = element_text(size=7))
+
+# John T. Hickerson
+p.J<-ggplot(Jth, aes(x=Date))+
+  geom_line(aes(y = `N1`, colour = "N1")) +
+  geom_line(aes(y=`N2`,colour="N2"))+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+
+d<-p.J+labs(title="John T. Hickerson",x ="", y = "Waste water concentration (cp/L) in 10k",colour=NULL)+
+  scale_x_date(breaks = break.vec, date_breaks="4 weeks", date_labels = "%y-%m-%d")+  scale_color_jama()+
+  theme(legend.position=c(0.9,0.9), legend.text = element_text(size=7),axis.text.x =element_text (angle=45,hjust=1, size=6),axis.text.y =element_text (size=6), axis.title.y = element_text(size=7))
+
+ggarrange(a,b,c,d, ncol = 2, nrow = 2)
+
+```
+
+```{r}
+# # Fred Hurvey
+# p.F <- ggplot(FH, aes(x=Date))+
+#             geom_line(aes(y = `N1_MGD`, colour = "N1_MGD")) +
+#               geom_line(aes(y=`N2_MGD`,colour="N2_MGD"))+
+#   scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+# ### here instead of print every week,
+# a1 <-p.F+labs(title="Fred Hurvey",x ="", y = "copies per MGD",colour=NULL)+
+#   scale_x_date(breaks = break.vec, date_breaks="4 weeks", date_labels = "%y-%m-%d")+
+#   theme(legend.position=c(0.5,0.9),legend.text = element_text(size=7),
+#         axis.text.x =element_text (angle=45,hjust=1))
+#
+#
+# # Haskell
+# p.H<-ggplot(Has, aes(x=Date))+
+#   geom_line(aes(y = `N1_MGD`, colour = "N1_MGD")) +
+#   geom_line(aes(y=`N2_MGD`,colour="N2_MGD"))+scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+#
+# b1<-p.H+labs(title="Haskell",x ="", y = "copies per MGD",colour=NULL)+
+#   scale_x_date(breaks = break.vec, date_breaks="4 weeks", date_labels = "%y-%m-%d")+
+#   theme(legend.position=c(0.1,0.9),legend.text = element_text(size=7),axis.text.x =element_text (angle=45,hjust=1))
+# # Roberto Bustamante
+# p.R<-ggplot(Rb, aes(x=Date))+
+#   geom_line(aes(y = `N1_MGD`, colour = "N1_MGD")) +
+#   geom_line(aes(y=`N2_MGD`,colour="N2_MGD"))+
+#   scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+#
+# c1<-p.R+labs(title="Roberto Bustamante",x ="", y = "copies per MGD",colour=NULL)+
+#   scale_x_date(breaks = break.vec, date_breaks="4 weeks", date_labels = "%y-%m-%d")+ theme(legend.position=c(0.1,0.9),legend.text = element_text(size=7),axis.text.x =element_text (angle=45,hjust=1))
+#
+# # John T. Hickerson
+# p.J<-ggplot(Jth, aes(x=Date))+
+#   geom_line(aes(y = `N1_MGD`, colour = "N1_MGD")) +
+#   geom_line(aes(y=`N2_MGD`,colour="N2_MGD"))+
+#   scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+#
+# d1<-p.J+labs(title="John T. Hickerson",x ="", y = "copies per MGD",colour=NULL)+
+#   scale_x_date(breaks = break.vec, date_breaks="4 weeks", date_labels = "%y-%m-%d")+
+#   theme(legend.position=c(0.1,0.9), legend.text = element_text(size=7),axis.text.x =element_text (angle=45,hjust=1))
+
+
+#ggarrange(a1,b1,c1,d1, ncol = 2, nrow = 2)
+
+```
+
+
+# Time series analysis with the reported number of cases
+
+```{r}
+# #loading and cleaning case dataset
+# options(scipen = 999)
+# my_data2 <- read_excel("case_data/WWTP_ZCTA_COVIDCASE5-20-22 NEW.xlsx",sheet="WWTP Normalized",col_names = FALSE, range="B2:PK7")[-2,]
+# # convert to data frame
+# myData.df <- as.data.frame(t(my_data2), stringsAsFactors=FALSE)
+# names(myData.df) <- myData.df[1,]; myData.df <- myData.df[-1,]
+# # clean Date variable
+# myData.df$Date<-excel_numeric_to_date(as.numeric(as.character(myData.df$Date)), date_system = "modern")
+# # Convert data from wide to long
+# myData.df <- gather(myData.df, WWTP, CaseRate, `NW/John T.`:`Bustamante`) %>% mutate(CaseRate=as.numeric(CaseRate))
+# # save the processes case data
+# writexl::write_xlsx(myData.df, "WWTP_CaseRate_processed_NEW.xlsx") 
+```
+
+**Processed COVID-19 case data (Time period: 3/22/2021 - 5/20/2022)**         
+```{r}
+# read in processed case data by WWTP
+myData.df <- read_excel("Processed_data/WWTP_CaseRate_processed_updated.xlsx") %>% mutate(Date=as.Date(Date))
+knitr::kable(sample_n(myData.df, 10))
+```
+
+
+For the figures, can we over lay the WW time series and the case data (perhaps case data y-axis on the right), to see how the trends correlate? Looks like we need to do this for each facility (i.e., Fred Hurvey, Haskell etc)   
+
+
+## COVID-19 infection rate (per 100k population) by four waste water treatment facilities      
+```{r}
+library(ggsci)
+break.vec <- c(seq(from = as.Date("2021-03-22"), to = as.Date("2022-5-20"),by = "week"))
+timeseries.case <- ggplot(myData.df, aes(x=Date))+
+  geom_line(aes(y = rate, color = WWTP))+scale_y_continuous(breaks = scales::pretty_breaks(n = 10))+ scale_color_jama()+
+  labs(title="COVID-19 cases per 100,000 population by WWTP",x ="Collection Date", y = "Number of cases per 100k", color=NULL)+
+  scale_x_date(breaks = break.vec, date_labels = c("%y-%m-%d", rep("%m-%d",40), "%y-%m-%d", rep("%m-%d",19)))+
+  theme(legend.position=c(0.8,0.9),legend.text = element_text(size=5),axis.text.x =element_text (angle=90,hjust=1))
+timeseries.case
+#ggarrange(a,b,c,d,timeseries.case, ncol = 3, nrow = 2)
+```
+
+## Overlay cases with WW time series plot           
+**Time overlap: 4/7/2021 - 1/26/2022**       
+
+### Fred Hurvey          
+```{r}
+## Fred Hurvey
+FH_dt <- left_join(FH, subset(myData.df, myData.df$WWTP=="Hervey"), by="Date") %>% filter(Date >= as.Date("2020-11-18")) %>% arrange(Date)
+coeff <- 15
+overlay.F <- ggplot(FH_dt, aes(x=Date))+
+  geom_line(aes(y = `N1`, colour = "N1")) +
+  geom_line(aes(y=`N2`,colour="N2"))+
+  geom_line(aes(y = rate/coeff, x=Date, color = "Cases per 100k"))+
+  labs(title="Fred Hurvey",x ="Collection Date", y ="Waste water concentration (cp/L) in 10k",colour=NULL)+
+  scale_y_continuous(   # Custom the Y scales:
+    name = "Waste water concentration (cp/L) in 10k", # Features of the first axis
+    sec.axis = sec_axis(trans=~.*coeff, name="Number of cases per 100k population"))+ # Add a second axis and specify its features
+  scale_x_date(breaks = break.vec,date_breaks="week",  date_labels = c("%m-%d","%y-%m-%d",rep("%m-%d",10),"%y-%m-%d", rep("%m-%d",51), "%y-%m-%d", rep("%m-%d",25)))+ 
+  theme(legend.position=c(0.1,0.9),legend.text = element_text(size=7),
+        axis.text.x =element_text (angle=90,hjust=1, size = 5.5))+
+  theme(axis.line.y.right = element_line(color = "red"))
+overlay.F
+```
+
+### Haskell        
+```{r}
+## Haskell
+HS_dt <- left_join(Has, subset(myData.df, myData.df$WWTP=="Haskell"), by="Date") %>% filter(Date >= as.Date("2020-11-18")) %>% arrange(Date)
+coeff <- 10
+overlay.H <- ggplot(HS_dt, aes(x=Date))+
+  geom_line(aes(y = `N1`, colour = "N1")) +
+  geom_line(aes(y=`N2`,colour="N2"))+
+  geom_line(aes(y = rate/coeff, x=Date, color = "Cases per 100k"))+
+  labs(title="Haskell",x ="Collection Date", y = "Waste water concentration (cp/L) in 10k",colour=NULL)+
+  scale_y_continuous(   # Custom the Y scales:
+    name = "Waste water concentration (cp/L) in 10k", # Features of the first axis
+    sec.axis = sec_axis(trans=~.*coeff, name="Number of cases per 100k population"))+ # Add a second axis and specify its features
+  scale_x_date(breaks = break.vec, date_breaks="week", date_labels = c("%m-%d","%y-%m-%d",rep("%m-%d",10),"%y-%m-%d", rep("%m-%d",51), "%y-%m-%d", rep("%m-%d",25)))+ 
+  theme(legend.position=c(0.1,0.9),legend.text = element_text(size=7),
+        axis.text.x =element_text (angle=90,hjust=1, size=5.5))+
+  theme(axis.line.y.right = element_line(color = "red"))
+overlay.H
+```
+
+### John T.          
+```{r}
+## John T.
+JT_dt <- left_join(Jth, subset(myData.df, myData.df$WWTP=="NW/John T."), by="Date") %>% filter(Date >= as.Date("2020-11-18")) %>% arrange(Date)
+coeff <- 10
+overlay.J <- ggplot(JT_dt, aes(x=Date))+
+  geom_line(aes(y = `N1`, colour = "N1")) +
+  geom_line(aes(y=`N2`,colour="N2"))+
+  geom_line(aes(y = CaseRate/coeff, x=Date, color = "Cases per 100k"))+
+  labs(title="John T. Hickerson",x ="Collection Date", y = "Waste water concentration (cp/L) in 10k",colour=NULL)+
+  scale_y_continuous(   # Custom the Y scales:
+    name = "Waste water concentration (cp/L) in 10k", # Features of the first axis
+    sec.axis = sec_axis(trans=~.*coeff, name="Number of cases per 100k population"))+ # Add a second axis and specify its features
+  scale_x_date(breaks = break.vec, date_breaks="week", date_labels = c("%m-%d","%y-%m-%d",rep("%m-%d",10),"%y-%m-%d", rep("%m-%d",51), "%y-%m-%d", rep("%m-%d",25)))+ 
+  theme(legend.position=c(0.1,0.9),legend.text = element_text(size=7),
+        axis.text.x =element_text (angle=90,hjust=1, size=5.5))+
+  theme(axis.line.y.right = element_line(color = "red"))
+overlay.J
+```
+
+### Roberto Bustamante      
+```{r}
+## Roberto Bustamante
+RB_dt <- left_join(Rb, subset(myData.df, myData.df$WWTP=="Bustamante"), by="Date") %>% filter(Date >= as.Date("2020-11-18")) %>% arrange(Date)
+coeff <- 20
+overlay.R <- ggplot(RB_dt, aes(x=Date))+
+  geom_line(aes(y = `N1`, colour = "N1")) +
+  geom_line(aes(y=`N2`,colour="N2"))+
+  geom_line(aes(y = CaseRate/coeff, x=Date, color = "Cases per 100k"))+
+  labs(title="John T. Hickerson",x ="Collection Date", y = "Waste water concentration (cp/L) in 10k",colour=NULL)+
+  scale_y_continuous(   # Custom the Y scales:
+    name = "Waste water concentration (cp/L) in 10k", # Features of the first axis
+    sec.axis = sec_axis(trans=~.*coeff, name="Number of cases per 100k population"))+ # Add a second axis and specify its features
+  scale_x_date(breaks = break.vec, date_breaks="week",  date_labels = c("%m-%d","%y-%m-%d",rep("%m-%d",10),"%y-%m-%d", rep("%m-%d",51), "%y-%m-%d", rep("%m-%d",25)))+ 
+  theme(legend.position=c(0.1,0.9),legend.text = element_text(size=7),
+        axis.text.x =element_text (angle=90,hjust=1, size=6))+
+  theme(axis.line.y.right = element_line(color = "red"))
+overlay.R
+```
+
+
+
+# Cross-correlation analysis between reported cases and WW concentration        
+
+Cross-correlation may help us identify the leading time when virus in WW started to show a pikes before the cases were increasing.    
+
+The CCF is defined as the set of correlations (height of the vertical line segments in figures below between two time series $x_t + h$ (waste water concentration) and $y_t$ (case rate) for lags $h = 0, \pm1, \pm2, \ldots$. A negative value for $h$ represents a correlation between the x-series at a time before $t$ and the y-series at time $t$.               
+The CCF helps to identify lags of $x_t$ that could be predictors of the $y_t$ series.           
+
+1. When $h < 0$ , $x$ leads $y$.            
+2. When $h > 0$ , $x$ lags $y$.       
+
+## Fred Hurvey               
+```{r}
+FH_dt <- subset(FH_dt, FH_dt$Date <= as.Date("2022-05-18")) %>% arrange(Date)
+N1_ts <- ts(FH_dt$N1,frequency=56, start = c(2021,04))
+case_ts <- ts(FH_dt$CaseRate,frequency=56,start=c(2021,04))
+
+## intersection (only overlapping times)
+dat_int <- ts.intersect(N1_ts, case_ts)
+## plot the ts
+plot(dat_int, main = "Time Series Plot of WW N1 and Case Infection in Fred Hurvey", yax.flip = TRUE)
+
+```
+
+### Cross-correlogram plot         
+```{r}
+########################
+# Cross-correlogram plot
+########################
+## get the matching test and case data
+N1_ts_match <- dat_int[,"N1_ts"]
+case_ts_match <- dat_int[,"case_ts"]
+## CCF of combined data
+ccf <- ccf(N1_ts_match, case_ts_match, ylab = "Cross-correlation", lag.max=20, main="")
+#ccf
+#plot(ccf[ccf$acf>0.7])
+# infection rates are relatively high ~3 days after high WW
+ccf$lag[ccf$acf==max(ccf$acf)]*56
+
+```
+**Here one lag is 37 days, so the maximum correlation is at -3 days - Infection rates are relatively high around 3 days after high WW concentration**           
+
+
+### Scatterplots of $y_t$ versus $x_{t-h}$ for negative lags from 0 back to a lag -5. In each plot, (WW N1 variable) is on the vertical and a past lag of infection rate is on the horizontal. Correlation values are given on each plot.         
+
+- Correlation on the top right is the cross-correlation between WW N1 at time t and Infection rate at time t-h (h=0,1...5)        
+- Red line in the plot is the lowess fit.     
+
+```{r}
+library(astsa)
+lag2.plot (N1_ts_match, case_ts_match, 5)
+```
+
+<!-- Regression models -->
+```{r}
+# alldata=ts.intersect(case_ts,caselag1=lag(case_ts,1), caselag2=lag(case_ts_match,2), N1lag5 = lag(N1_ts_match,5),
+# N1lag4=lag(N1_ts_match,4), N1lag3=lag(N1_ts_match,3), N1lag2=lag(N1_ts_match,2), N1lag1=lag(N1_ts_match,1))
+# tryit = lm(case_ts_match~N1lag1 + N1lag2+N1lag3+N1lag4+N1lag5 data = alldata)
+# summary (tryit)
+# acf2(residuals(tryit))
+```
+
+
+
+## Haskell
+```{r}
+HS_dt <- subset(HS_dt, HS_dt$Date <= as.Date("2022-05-18")) %>% arrange(Date)
+N1_ts <- ts(HS_dt$N1, frequency=53, start=c(2021, 04))
+case_ts <- ts(HS_dt$CaseRate, frequency=53, start=c(2021, 04))
+
+## intersection (only overlapping times)
+dat_int <- ts.intersect(N1_ts, case_ts)
+## plot the ts
+plot(dat_int, main = "Time Series Plot of WW and Infection in Haskell", yax.flip = TRUE)
+
+## get the matching test and case data
+N1_ts_match <- dat_int[,"N1_ts"]
+case_ts_match <- dat_int[,"case_ts"]
+## CCF of combined data
+ccf <- ccf(N1_ts_match, case_ts_match, ylab = "Cross-correlation", lag.max=20, main="")
+#ccf
+#plot(ccf[ccf$acf>0.7])
+# infection rates are relatively high ~2 days after high WW
+ccf$lag[ccf$acf==max(ccf$acf)]*53
+```
+**Infection rates are relatively high around 2 days after high WW concentration**         
+
+```{r}
+# scatterplot
+lag2.plot (N1_ts_match, case_ts_match, 3)
+```
+
+
+
+
+## John T       
+```{r}
+JT_dt <- subset(JT_dt, JT_dt$Date <= as.Date("2022-05-18")) %>% arrange(Date)
+N1_ts <- ts(JT_dt$N1, frequency=53, start=c(2021, 04))
+case_ts <- ts(JT_dt$CaseRate, frequency=53, start=c(2021, 04))
+
+## intersection (only overlapping times)
+dat_int <- ts.intersect(N1_ts, case_ts)
+## plot the ts
+plot(dat_int, main = "Time Series Plot of WW and Infection in John T.", yax.flip = TRUE)
+
+## get the matching test and case data
+N1_ts_match <- dat_int[,"N1_ts"]
+case_ts_match <- dat_int[,"case_ts"]
+## CCF of combined data
+ccf <- ccf(N1_ts_match, case_ts_match, ylab = "Cross-correlation", lag.max=20, main="")
+#ccf
+
+#plot(ccf[ccf$acf>0.7])
+# infection rates are relatively high ~2 days after high WW
+ccf$lag[ccf$acf==max(ccf$acf)]*53
+
+```
+**Infection rates are relatively high around 10 days after high WW concentration**
+
+
+```{r}
+# scatterplot
+lag2.plot (N1_ts_match, case_ts_match, 11)
+```
+
+
+## Roberto Bustamante
+
+```{r}
+RB_dt <- subset(RB_dt, RB_dt$Date <= as.Date("2022-05-18")) %>% arrange(Date)
+N1_ts <- ts(RB_dt$N1, frequency=56, start=c(2021, 04))
+case_ts <- ts(RB_dt$CaseRate, frequency=56, start=c(2021, 04))
+
+## intersection (only overlapping times)
+dat_int <- ts.intersect(N1_ts, case_ts)
+## plot the ts
+plot(dat_int, main = "Time Series Plot of WW and Infection in Roberto Bustamante", yax.flip = TRUE)
+
+## get the matching test and case data
+N1_ts_match <- dat_int[,"N1_ts"]
+case_ts_match <- dat_int[,"case_ts"]
+## CCF of combined data
+ccf <- ccf(N1_ts_match, case_ts_match, ylab = "Cross-correlation", lag.max=20, main="")
+#ccf
+#plot(ccf[ccf$acf>0.7])
+# infection rates are relatively high ~1 daysafter high WW
+ccf$lag[ccf$acf==max(ccf$acf)]*56
+```
+**Infection rates are relatively high around 1 day after high WW concentration**
+
+
+```{r}
+
+# scatterplot
+lag2.plot (N1_ts_match, case_ts_match, 5)
+```
+
+
+
+
