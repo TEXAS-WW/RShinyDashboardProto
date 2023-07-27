@@ -1,0 +1,102 @@
+ /* Apply a light gray background and padding to all select input fields */
+  .selectize-input {
+    background-color: #f8f9fa !important;
+    padding: 5px !important;
+    border: none !important;
+    border-radius: 4px;
+  }
+  
+  /* Style the radio buttons */
+  .shiny-options-group {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  
+  /* Style the text between radio buttons */
+  .shiny-options-group label {
+    margin-right: 22px;
+  }
+  
+  /* Change the color of checked radio buttons */
+input:radio:checked + label {
+  color: green !important;
+}
+  
+  /* Style the plot title */
+  .js-plotly-plot .plotly .gtitle {
+    font-size: 1.2em;
+    color: #1a1a1a;
+    font-weight: bold;
+  }
+  
+  /* Apply consistent font styling to all tabs */
+  .tabbable > .nav > li > a {
+    font-size: 1.1em;
+    color: #1a1a1a;
+    font-weight: normal;
+  }
+  /* Apply a light background and padding to the selection inputs */
+.selection-inputs {
+  background-color: #f8f9fa !important;
+  padding: 5px !important;
+}
+
+ .shiny-output-error-validation {
+ font-size: 20px;  /* Adjust size as needed */
+ font-weight: bold;
+  }
+
+  /* Style the date picker input */
+  .datepicker-dropdown {
+    width: auto !important;
+  }
+  .datepicker .datepicker-days {
+    width: auto !important;
+  }
+  
+  
+  #trendPlot{
+  height:700px !important;
+  width:1100px !important;
+  }
+  
+    
+  #cds_TrendPlot{
+  height:700px !important;
+  width:1500px !important;
+  }
+  
+      
+  #collectionDatesPlot_cds{
+  height:400px !important;
+  width:1500px !important;
+  }
+  
+.cds-daterange-text {
+font-size: 20px;  /* Adjust size as needed */
+font-weight: bold;  /* Makes the text bold */
+color: #333;  /* Change the text color */
+/* Add any other CSS properties here */
+                                  }
+ 
+     
+  #qpcr_TrendPlot{
+  height:700px !important;
+  width:1500px !important;
+  }
+  
+      
+  #collectionDatesPlot_qpcr{
+  height:400px !important;
+  width:1500px !important;
+  }
+  
+.qpcr-daterange-text {
+font-size: 20px;  /* Adjust size as needed */
+font-weight: bold;  /* Makes the text bold */
+color: #333;  /* Change the text color */
+/* Add any other CSS properties here */
+                                  }
+             

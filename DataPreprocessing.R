@@ -49,6 +49,10 @@ suppressPackageStartupMessages({
 })
 
 
+#-# moving average function
+
+ma <- function(x, n = 3){stats::filter(x, rep(1 / n, n), sides = 1)}
+
 # Read in data for WWTP Address and Centroid for Counties
 
 
@@ -196,19 +200,38 @@ abbr_dt <- read_excel(sprintf("%s/Data/site_coding/Sites_and_abbreviations.xlsx"
 
 # fix all the formatting, average genome copies
 
-comb_qPCR_table_average <- merge(comb_qPCR_table, abbr_dt,  by = "LocationAbbr") %>%
+comb_qPCR_table <- merge(comb_qPCR_table, abbr_dt,  by = "LocationAbbr") %>%
   mutate(Week = floor_date(as.Date(date_of_collection), "weeks", week_start = 1),
          copiesperml = as.numeric(copiesperml)) %>%
-  group_by(LocationAbbr, Site, CMMR_Barcode, Target, SampleName, Week, City) %>%
-  reframe(average_genome_copies_L = mean(copiesperml)) %>%
+  group_by(LocationAbbr, CMMR_Barcode, Target, SampleName, Week, City) %>%
+  summarize(average_genome_copies_L = mean(copiesperml)) %>%
   ungroup()
 
-comb_qPCR_table_10k <- merge(comb_qPCR_table, abbr_dt,  by = "LocationAbbr") %>%
-  mutate(Week = floor_date(as.Date(date_of_collection), "weeks", week_start = 1),
-         copiesperml = as.numeric(copiesperml)) %>%
-  group_by(LocationAbbr, Site, CMMR_Barcode, Target, SampleName, Week, City) %>%
-  reframe(genome_copies_L_10k = copiesperml/10000) %>%
+qPCR_ma_p <- comb_qPCR_table %>%
+  #filter(City != "other") %>%
+  filter(City != "other",
+         Target %in% c("SARSCOV2N1", "INFLUENZAA", "INFLUENZAB", 
+                       "NOROVIRUS", "MONKEYPOX")) %>%
+  mutate(Target = gsub("SARSCOV2N1", "SARS-CoV-2", Target),
+         Target = gsub("INFLUENZAA", "Influenza A virus", Target),
+         Target = gsub("INFLUENZAB", "Influenza B virus", Target),
+         Target = gsub("NOROVIRUS", "Norovirus GII", Target),
+         Target = gsub("MONKEYPOX", "Monkeypox virus", Target)) %>%
+  group_by(Week, City, Target) %>%
+  summarize(average_genome_copies_L = mean(average_genome_copies_L)) %>%
+  ungroup() %>%
+  group_by(City, Target) %>%
+  filter(n_distinct(Week) >= 3) %>%
+  arrange(City, Target, Week) %>%
+  mutate(moving_average = ma(average_genome_copies_L)) %>%
   ungroup()
+
+# comb_qPCR_table_10k <- merge(comb_qPCR_table, abbr_dt,  by = "LocationAbbr") %>%
+#   mutate(Week = floor_date(as.Date(date_of_collection), "weeks", week_start = 1),
+#          copiesperml = as.numeric(copiesperml)) %>%
+#   group_by(LocationAbbr, Site, CMMR_Barcode, Target, SampleName, Week, City) %>%
+#   reframe(genome_copies_L_10k = copiesperml/10000) %>%
+#   ungroup()
 
 ## calculate unique cities
 virome_cities <- comb_metadata_table %>% 
@@ -217,16 +240,11 @@ virome_cities <- comb_metadata_table %>%
   select(City) %>%
   unique()
 
-qPCR_cities_dt <- comb_qPCR_table_average %>% 
-  ungroup() %>%
-  filter(City != "other") %>% 
-  select(City) %>%
-  unique()
 
-
-total_cities <- merge(virome_cities, qPCR_cities_dt, by = "City", all = T)
-
-WWTP_cities <- list(unique(total_cities$City))
+# 
+# total_cities <- merge(virome_cities, qPCR_cities_dt, by = "City", all = T)
+# 
+# WWTP_cities <- list(unique(total_cities$City))
 #WWTP_cities <- gsub(", TX", "", WWTP_cities[[1]])
 
 ### Coordinates, Texas Cities with WWTPs in TEPHI program
@@ -244,10 +262,6 @@ WWTP_cities <- list(unique(total_cities$City))
 # 
 # pal <- wes_palette("Darjeeling1", WWTP_citieslength, type = "continuous")
 
-
-#-# moving average function
-
-ma <- function(x, n = 3){stats::filter(x, rep(1 / n, n), sides = 1)}
 
 # Load data for US states
 states <- map_data("state")
