@@ -350,6 +350,40 @@ server <- function(input, output, session) {
     
   })
   
+  output$cds_TrendPlot_zoomed <- renderPlotly({
+    if (input$cdsViewType == 'city') {
+      
+      plot_zoomed <- cds_filtered_data() %>%
+        ggplot(aes(x = Week, y = moving_average, color = species)) +
+        geom_line(linewidth = 1, alpha = 0.9) +
+        scale_x_date(date_breaks = "months", date_labels = "%b %Y") +
+        # scale_color_manual(values = pal) +
+        scale_y_continuous(position = "right") +
+        theme_bw() +
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+              axis.title.y = element_text(margin = margin(l = 5)))
+      
+      
+    } else if (input$cdsViewType == 'variant') {
+      plot_zoomed <- cds_filtered_data() %>%
+        ggplot(aes(x = Week, y = moving_average, color = City)) +
+        geom_line(linewidth = 1, alpha = 0.9) +
+        scale_x_date(date_breaks = "months", date_labels = "%b %Y") +
+        # scale_color_manual(values = pal) +
+        scale_y_continuous(position = "right") +
+        theme_bw() +
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+              axis.title.y = element_text(margin = margin(l = 5)))
+    }
+    
+    ggplotly(plot_zoomed) %>%
+      layout(xaxis = list(
+        autorange = FALSE,
+        range = as.character(as.Date(c(minDate_cds, maxDate_cds))),
+        rangeslider = list(type = "date")))
+
+  })
+  
   
   #### END OF SETTING UP CDS_TRENDPLOT ###
   

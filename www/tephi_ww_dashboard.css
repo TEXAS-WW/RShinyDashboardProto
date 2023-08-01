@@ -1,4 +1,7 @@
  /* Apply a light gray background and padding to all select input fields */
+  
+div {
+
   .selectize-input {
     background-color: #f8f9fa !important;
     padding: 5px !important;
@@ -98,5 +101,5 @@ font-size: 20px;  /* Adjust size as needed */
 font-weight: bold;  /* Makes the text bold */
 color: #333;  /* Change the text color */
 /* Add any other CSS properties here */
-                                  }
+                                  }}
              

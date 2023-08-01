@@ -21,12 +21,6 @@ options(shiny.autoreload = TRUE)
 
 
 
-minDate_cds <- as.Date(min(major_path_expand_dt$Week, na.rm = TRUE))
-maxDate_cds <- as.Date(max(major_path_expand_dt$Week, na.rm = TRUE))
-
-minDate_qpcr<- as.Date(min(qPCR_ma_p$Week, na.rm = TRUE))
-maxDate_qpcr <- as.Date(max(qPCR_ma_p$Week, na.rm = TRUE))
-
 
 options(shiny.port = 8100)
 shinyApp(ui = ui, server = server )

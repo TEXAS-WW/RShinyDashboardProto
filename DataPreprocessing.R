@@ -80,25 +80,6 @@ merged_CountyWWTP$Radius = replace(merged_CountyWWTP$Radius, is.na(merged_County
 merged_CountyWWTP$FillOpacity = replace(merged_CountyWWTP$FillOpacity, is.na(merged_CountyWWTP$FillOpacity), 0)
 merged_CountyWWTP$Color = replace(merged_CountyWWTP$Color, is.na(merged_CountyWWTP$Color), "#F5DEB3")
 
-#county_data_shp = map("county", "texas", fill = TRUE, plot = FALSE)
-
-# # Split the string using comma as the delimiter
-# extracted_string <- sub(".*?,\\s*", "",county_data_shp$names)
-# 
-# capitalized_names <- c()
-# # For loop to capitalize names
-# for (i in (1:length(extracted_string))) {
-#   name_parts <- strsplit(extracted_string[i], " ")[[1]]
-#   # Capitalize the first letter of each word if the name has two words
-#   if (length(name_parts) > 1) {
-#     capitalized_name <- sapply(name_parts, function(x) paste(toupper(substr(x, 1, 1)), substr(x, 2, stop = 20), sep = ""))
-#   }
-#   # Capitalize the first letter if the name has only one word
-#   else {
-#     capitalized_name <- paste(toupper(substr(name_parts, 1, 1)), substr(name_parts, 2,stop = 20), sep = "")
-#   }
-#   county_data_shp$names[i] = paste(c(capitalized_names, paste(capitalized_name, collapse = " ")),"County")
-# }
 
 county_data_shp$wwtp = rep(0,length(county_data_shp$NAMELSAD))
 
@@ -109,18 +90,6 @@ county_data_shp$wwtp <- ifelse(county_data_shp$NAMELSAD == "Harris County", 9,
                                                  ifelse(county_data_shp$NAMELSAD == "Lubbock County", 1,
                                                         ifelse(county_data_shp$NAMELSAD == "Wichita County", 1, 0))))))
 
-
-
-
-# read in processed ElPaso WWTP data
-organized.data <- read_excel("Data/ElPasoData/Processed_data/WeeklyReports_ElPaso_CMMR(R)_2022_Processed.xlsx") %>% mutate(Date=as.Date(`Date Collected`))
-sample_n(organized.data[,-c(12:15)], 10) %>% knitr::kable()
-
-organized.data <- organized.data %>% dplyr::rename(N1=`Copies per L waste water (N1)`, N2=`Copies per L waste water (N2)`,
-                                                   N1_MGD=`Copies/MGD (N1)`, N2_MGD=`Copies/MGD (N2)`)
-
-
-myData.df <- read_excel("Data/ElPasoData/Processed_data/WWTP_CaseRate_processed_updated.xlsx") %>% mutate(Date=as.Date(Date))
 
 
 
@@ -226,12 +195,7 @@ qPCR_ma_p <- comb_qPCR_table %>%
   mutate(moving_average = ma(average_genome_copies_L)) %>%
   ungroup()
 
-# comb_qPCR_table_10k <- merge(comb_qPCR_table, abbr_dt,  by = "LocationAbbr") %>%
-#   mutate(Week = floor_date(as.Date(date_of_collection), "weeks", week_start = 1),
-#          copiesperml = as.numeric(copiesperml)) %>%
-#   group_by(LocationAbbr, Site, CMMR_Barcode, Target, SampleName, Week, City) %>%
-#   reframe(genome_copies_L_10k = copiesperml/10000) %>%
-#   ungroup()
+
 
 ## calculate unique cities
 virome_cities <- comb_metadata_table %>% 
@@ -239,28 +203,6 @@ virome_cities <- comb_metadata_table %>%
   filter(City != "other") %>% 
   select(City) %>%
   unique()
-
-
-# 
-# total_cities <- merge(virome_cities, qPCR_cities_dt, by = "City", all = T)
-# 
-# WWTP_cities <- list(unique(total_cities$City))
-#WWTP_cities <- gsub(", TX", "", WWTP_cities[[1]])
-
-### Coordinates, Texas Cities with WWTPs in TEPHI program
-
-# invisible(capture.output(
-#   cities <- st_read(sprintf(
-#     "Data/geographical_files/Texas_Cities/City.shp", 
-#     find_rstudio_root_file())) %>% 
-#     filter(CITY_NM %in% WWTP_cities)%>% 
-#     st_cast("POINT") %>% as("Spatial") 
-# ))
-# 
-# 
-# WWTP_citieslength <- length(unique(total_cities$City))
-# 
-# pal <- wes_palette("Darjeeling1", WWTP_citieslength, type = "continuous")
 
 
 # Load data for US states

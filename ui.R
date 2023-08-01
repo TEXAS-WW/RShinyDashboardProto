@@ -1,3 +1,11 @@
+
+
+minDate_cds <- as.Date(min(major_path_expand_dt$Week, na.rm = TRUE))
+maxDate_cds <- as.Date(max(major_path_expand_dt$Week, na.rm = TRUE))
+
+minDate_qpcr<- as.Date(min(qPCR_ma_p$Week, na.rm = TRUE))
+maxDate_qpcr <- as.Date(max(qPCR_ma_p$Week, na.rm = TRUE))
+
 ui <- fluidPage(theme = shinytheme("cerulean"),
                 
                 tags$head(
@@ -5,8 +13,9 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                 ),
                 
                 # Define the UI components for the first tab
-                tabsetPanel(
-                  
+                div(
+                 tabsetPanel(
+                
                   tabPanel("Collection Site", 
                            tags$h2(tags$b("Wastewater Treatment Site")),
                            tags$h4("Explore a comprehensive map of wastewater treatment sites. Use the dropdown menu to filter by county."),
@@ -79,6 +88,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                  fluidRow( plotlyOutput("cds_TrendPlot")),
                                  div(class = 'cds-daterange-text', textOutput("cds_DateRange")),
                                  tags$br(),
+                                 fluidRow(plotlyOutput("cds_TrendPlot_zoomed")),
                                  fluidRow(plotlyOutput("collectionDatesPlot_cds"))
                                  
  
@@ -149,7 +159,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                   )
 
                   ### END OF QPCR UI TAB ###
-                  
+         )           #DIV WRAP
     )
 )
 
