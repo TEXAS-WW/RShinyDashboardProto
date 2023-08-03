@@ -270,3 +270,10 @@ major_path_expand_dt <- major_path_met_dt %>%
 major_path_expand_dt <- merge(major_path_expand_dt, city_dates, by = c("City", "Week"))
 
 major_path_expand_dt$City = gsub(",.*$", "", major_path_expand_dt$City)
+
+
+minDate_cds <- as.Date(min(major_path_expand_dt$Week, na.rm = TRUE))
+maxDate_cds <- as.Date(max(major_path_expand_dt$Week, na.rm = TRUE))
+
+minDate_qpcr<- as.Date(min(qPCR_ma_p$Week, na.rm = TRUE))
+maxDate_qpcr <- as.Date(max(qPCR_ma_p$Week, na.rm = TRUE))
