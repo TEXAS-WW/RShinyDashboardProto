@@ -94,8 +94,8 @@ color: #333;  /* Change the text color */
   
       
   #collectionDatesPlot_qpcr{
-  height:400px !important;
-  width:1500px !important;
+  height:600px !important;
+  width:1000px !important;
   }
   
 .qpcr-daterange-text {

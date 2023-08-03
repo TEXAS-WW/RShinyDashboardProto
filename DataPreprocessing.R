@@ -39,11 +39,18 @@ suppressPackageStartupMessages({
   library(dplyr)
   library(plotly)
   library(xtable)
+  library(reactable)
   library(DT)
   library(shinythemes)
   library(htmltools)
   library(maps)
-  
+  library(reactablefmtr)
+  library(sparkline)
+  #install_github("timelyportfolio/dataui")
+  library(dataui)
+  library(devtools)
+  library(viridis)
+  library(scales)
   library(cdlTools) # converting state fips to state name
   options(tigris_use_cache  = TRUE)
 })
@@ -141,20 +148,20 @@ comb_metadata_table$Site <- comb_metadata_table$Code
 comb_metadata_table <- comb_metadata_table %>% 
   select(-Code)
 
-### genome coverage
-# ## list of relevant files in the directory
-# coverage_files <- list.files(sprintf(
-#   "Data/genome_coverage", 
-#   find_rstudio_root_file()), 
-#   pattern = "*.100windows.mean_cov.tsv", full.names = TRUE)
-# 
-# ## load and combine all as one table
-# comb_coverage_table <- rbindlist(
-#   lapply(coverage_files, 
-#          fread, header = F, 
-#          col.names = 
-#            c("sample_ID", "accession", "start_base", "end_base", "mean_depth")))
-# 
+## genome coverage
+## list of relevant files in the directory
+coverage_files <- list.files(sprintf(
+  "Data/genome_coverage",
+  find_rstudio_root_file()),
+  pattern = "*.100windows.mean_cov.tsv", full.names = TRUE)
+
+## load and combine all as one table
+comb_coverage_table <- rbindlist(
+  lapply(coverage_files,
+         fread, header = F,
+         col.names =
+           c("sample_ID", "accession", "start_base", "end_base", "mean_depth")))
+
 
 #-# load all batches of qPCR Data
 
@@ -277,3 +284,98 @@ maxDate_cds <- as.Date(max(major_path_expand_dt$Week, na.rm = TRUE))
 
 minDate_qpcr<- as.Date(min(qPCR_ma_p$Week, na.rm = TRUE))
 maxDate_qpcr <- as.Date(max(qPCR_ma_p$Week, na.rm = TRUE))
+
+
+# DATA PREPARATION FOR INTERACTIVE TABLE
+
+#-# Make reactables for major pathogens format tables
+#format coverage for reactable
+comb_coverage_table$mean_depth <- round(comb_coverage_table$mean_depth)
+
+
+sum_coverage <- comb_coverage_table %>%
+  group_by(sample_ID, accession) %>%
+  summarize(coverage = list(mean_depth)) 
+
+sum_coverage <- setDT(sum_coverage)
+
+#merge tax profile, metadata, and coverage
+
+genome_data <- merge(comb_tax_table, comb_metadata_table, 
+                     by = "sample_ID") %>%
+  filter(species %in% c("Enterovirus D", #"Rotavirus A", 
+                        "Influenza A virus", 
+                        "Severe acute respiratory syndrome-related coronavirus", 
+                        "Monkeypox virus", "Respiratory syncytial virus", 
+                        "Human mastadenovirus B", "Hepatovirus A", 
+                        "Human respirovirus 1", "Human respirovirus 3"))
+
+combined_react_data <- merge(genome_data, sum_coverage, 
+                             by = c("sample_ID","accession"))
+
+
+
+combined_react_data <- subset(combined_react_data, select = c("sample_ID", "Site", "City", "Date", "accession", "sequence_name", "reference_length", "RPKM", "covered_bases", "coverage"))
+combined_react_data$Percent_covered <- combined_react_data$covered_bases / combined_react_data$reference_length
+
+combined_react_data <- subset(combined_react_data, select = c("sample_ID", "Site", "City", "Date", "sequence_name", "accession", "reference_length", "Percent_covered", "RPKM", "coverage"))
+
+
+
+#### Data for ElPaso qPCR ####
+# Load required data
+
+ElPaso <- read.csv("Data/qPCR/ElPasoProcessed_qpcr_data/qPCR_Final_CombinedData_200622_230718.csv")
+
+ElPaso_caserate <- read_xlsx("Data/qPCR/ElPasoProcessed_qpcr_data/WWTP_CaseRate_processed_updated.xlsx")
+
+# Adding service population to each WWTP
+service_pop <- c("Haskell" = 140521, "Fred Hurvey" = 113292
+                 , "John T. Hickerson" = 132479, "Roberto Bustamante" = 438446)
+
+names(ElPaso)[2] <- "Date"
+
+ElPaso$Date <- as.Date(ElPaso$Date)
+ElPaso_caserate$Date <- as.Date(ElPaso_caserate$Date)
+
+ElPaso <- ElPaso %>%
+  mutate(
+    service_pop = service_pop[WWTP]
+  )
+
+# Create normalized concentration based on flow rate and service pop
+ElPaso <- ElPaso %>%
+  mutate(
+    normalized_concentration = avg_copies_per_ml * AVG_Flowrate_MGD * 3.78 * 1e6 / service_pop)
+
+# Prepare the data
+data <- ElPaso %>%
+  na.omit() %>%
+  mutate(
+    scaled_concentration = rescale(normalized_concentration, to = c(0, 1))
+  )
+
+caserate_data <- ElPaso_caserate %>%
+  na.omit() %>%
+  mutate(
+    scaled_case_rate = rescale(rate, to = c(0, 1))
+  )
+
+merged_data <- merge(data, caserate_data, by = c("WWTP", "Date"))
+
+# # Convert the data to long format for plotting
+merged_data_long <- merged_data %>%
+  gather(key = "variable", value = "value", scaled_concentration, scaled_case_rate)
+
+
+#### ENDING PREPAPRING Data for ElPaso qPCR ####
+
+
+
+minDate_cds <- as.Date(min(major_path_expand_dt$Week, na.rm = TRUE))
+maxDate_cds <- as.Date(max(major_path_expand_dt$Week, na.rm = TRUE))
+
+minDate_qpcr<- as.Date(min(qPCR_ma_p$Week, na.rm = TRUE))
+maxDate_qpcr <- as.Date(max(qPCR_ma_p$Week, na.rm = TRUE))
+
+

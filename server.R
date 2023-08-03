@@ -316,50 +316,22 @@ server <- function(input, output, session) {
       }
       
       ggplotly(plot, width = 1500, height = 700) %>%
-        layout(yaxis = list(title = list(
-          text ='City-wide abundance (RPKMF)                                          \n', 
-          xanchor = 'right', yanchor =  'center')))
+        layout(
+          yaxis = list(
+            title = list(
+              text = 'City-wide abundance (RPKMF)                                          \n', 
+              xanchor = 'right', yanchor =  'center'
+            )
+          )
+        )
       
       
     }
     
     
   })
-  
-  output$cds_TrendPlot_zoomed <- renderPlotly({
-    if (input$cdsViewType == 'city') {
-      
-      plot_zoomed <- cds_filtered_data() %>%
-        ggplot(aes(x = Week, y = moving_average, color = species)) +
-        geom_line(linewidth = 1, alpha = 0.9) +
-        scale_x_date(date_breaks = "months", date_labels = "%b %Y") +
-        # scale_color_manual(values = pal) +
-        scale_y_continuous(position = "right") +
-        theme_bw() +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
-              axis.title.y = element_text(margin = margin(l = 5)))
-      
-      
-    } else if (input$cdsViewType == 'variant') {
-      plot_zoomed <- cds_filtered_data() %>%
-        ggplot(aes(x = Week, y = moving_average, color = City)) +
-        geom_line(linewidth = 1, alpha = 0.9) +
-        scale_x_date(date_breaks = "months", date_labels = "%b %Y") +
-        # scale_color_manual(values = pal) +
-        scale_y_continuous(position = "right") +
-        theme_bw() +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
-              axis.title.y = element_text(margin = margin(l = 5)))
-    }
-    
-    ggplotly(plot_zoomed) %>%
-      layout(xaxis = list(
-        autorange = FALSE,
-        range = as.character(as.Date(c(minDate_cds, maxDate_cds))),
-        rangeslider = list(type = "date")))
+ 
 
-  })
-  
   
   #### END OF SETTING UP CDS_TRENDPLOT ###
   
@@ -533,19 +505,6 @@ output$qpcr_TrendPlot <- renderPlotly({
 })
 
 
-
-
-  
-  
-  # # Add an observer to update the date range when the focus button is clicked
-  # observeEvent(input$focusRecent, {
-  #   updatePickerInput(session, "dateRange",
-  #                            min = max(comb_qPCR_table_average$Week, na.rm = TRUE),
-  #                     max = max(comb_qPCR_table_average$Week, na.rm = TRUE), 
-  #                     value = c(max(comb_qPCR_table_average$Week), 
-  #                               max(comb_qPCR_table_average$Week)))
-  # })
-   
  
   #### BEGINNING OF COLLECTION DATE PLOT SET UP ####
   strains_per_sample_dt <- comb_tax_table %>%
@@ -611,77 +570,168 @@ output$qpcr_TrendPlot <- renderPlotly({
       ggplotly(plot) 
     }
   })
-  
-  
-  output$collectionDatesPlot_qpcr <- renderPlotly({
-    
-    if (input$qpcrViewType == 'city') {
-      
-      calendarp <- merge(comb_metadata_table, strains_per_sample_dt, 
-                         by = "sample_ID") %>%
-        mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
-        filter(gsub(",.*$", "", City) %in% input$qpcrCityInput_city ) %>%
-        select(c(City, Site, Week, sample_ID, detectedStrains)) %>%
-        distinct() 
-      
-      plot <- ggplot(calendarp,
-                     aes(x = Week, y = Site, color = Site, size = detectedStrains)) +
-        geom_point() +
-        geom_line(size = 0.25, na.rm = T) +
-        scale_size_continuous(range = c(0.2,3.5)) +
-        facet_wrap(City~., ncol = 1, scales = "free_y") +
-        scale_color_manual(values = pal) +
-        scale_x_date(date_breaks = "months", date_labels = "%b %Y") +
-        scale_y_discrete(labels = function(x) str_trunc(x, width = 14)) +
-        theme_pubclean() +
-        labs(x="",y="") +
-        theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust=1),
-              legend.position = "Off")
-      
-      ggplotly(plot)
-      
-    }
-    
-    else if (input$qpcrViewType == 'variant') {
-      calendarp <- merge(comb_metadata_table, strains_per_sample_dt, 
-                         by = "sample_ID") %>%
-        mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
-        filter(gsub(",.*$", "", City) %in% input$qpcrCityInput_variant ) %>%
-        select(c(City, Site, Week, sample_ID, detectedStrains)) %>%
-        distinct() 
-      
-      
-      plot <- ggplot(calendarp,
-                     aes(x = Week, y = Site, color = Site, size = detectedStrains)) +
-        geom_point() +
-        geom_line(size = 0.25, na.rm = T) +
-        scale_size_continuous(range = c(0.2,3.5)) +
-        facet_wrap(City~., ncol = 1, scales = "free_y") +
-        scale_color_manual(values = pal) +
-        scale_x_date(date_breaks = "months", date_labels = "%b %Y") +
-        scale_y_discrete(labels = function(x) str_trunc(x, width = 14)) +
-        theme_pubclean() +
-        labs(x="",y="") +
-        theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust=1),
-              legend.position = "Off")
-      
-      ggplotly(plot) 
-    }
+# 
+  # output$cdsImportantPathogensTable <- renderReactable({
+  #   reactable(
+  #     combined_react_data,
+  #     pagination = TRUE,
+  #     filterable = TRUE,
+  #     showPageSizeOptions = TRUE,
+  #     pageSizeOptions = c(10, 20, 100),
+  #     defaultPageSize = 10,
+  #     columns = list(
+  #       Percent_covered = colDef(name = "Percent"),
+  #       RPKM = colDef(name = "RPKM"),
+  #       coverage = colDef(name = "Coverage"),
+  #       sequence_name = colDef(name = "Sequence"),
+  #       sample_ID = colDef(name = "Sample"),
+  #       reference_length = colDef(name = "Reference Length")
+  #     )
+  #   )
+  # })  
+  output$cdsImportantPathogensTable <- renderReactable({
+    reactable(combined_react_data,
+      pagination = TRUE,
+      filterable = TRUE,
+      showPageSizeOptions = TRUE,
+      pageSizeOptions = c(10, 20, 100),
+      defaultPageSize = 10,
+      defaultSorted = list(Percent_covered = "desc"),
+      columns = list(
+        Percent_covered = colDef(
+          cell = data_bars(
+            data = combined_react_data,
+            fill_color = viridis::magma(5, direction = -1),
+            background = '#F1F1F1',
+            min_value = 0,
+            max_value = 1,
+            round_edges = TRUE,
+            text_position = 'outside-end',
+            number_fmt = scales::percent
+          )
+        ),
+        RPKM = colDef(
+          width = 70,
+          format = colFormat(digits = 2)
+        ),
+        coverage = colDef(
+          filterable = FALSE,
+          # width = 250
+          # ,
+          # cell = react_sparkline(
+          #   data = combined_react_data$coverage,
+          #   decimals = 1,
+          #   show_area = TRUE,
+          #   area_color = "darkgreen",
+          #   line_curve = "cardinal",
+          #   highlight_points = highlight_points(max = "blue"),
+          #   labels = "max",
+          #   statline = "min",
+          #   statline_label_size = "0em",
+          #   statline_color = "black"
+          ),
+        sequence_name = colDef(
+          width = 150),
+        sample_ID = colDef(
+          width = 70,
+          name = "Sample"),
+        reference_length = colDef(
+          width = 80,
+          name = "Reference Length")
+      ))
   })
+
   
+  #####################
   
-  ### END OF COLLECTION DATE PLOT SET UP ####
-  
-  #Add observer to update the date range input when the button is clicked
-  observeEvent(input$cdsFocusRecent, {
-    # Get the maximum date from the data
-    maxDate <- max(cds_filtered_data()$Week, na.rm = TRUE)
-    
-    # Update the date range input to the most recent date
-    updateAirDateInput(session, "DateRange",
-                       min = maxDate - 3,  # You can adjust the range according to your needs
-                       max = maxDate,
-                       value = c(maxDate - 3, maxDate))
-  })
- 
+  # #-# Calculate tSNE
+  # 
+  # comb_tax_table$RPKM <- as.numeric(comb_tax_table$RPKM)
+  # 
+  # seqname_sID_wide_dt <- 
+  #   comb_tax_table %>% 
+  #   subset(select = c("sequence_name", "sample_ID", "RPKM")) %>%
+  #   distinct(sequence_name, sample_ID, RPKM) %>%
+  #   group_by(sequence_name, sample_ID) %>%
+  #   summarize(RPKM = mean(RPKM)) %>%
+  #   pivot_wider(names_from = sequence_name, values_from = RPKM, values_fill = 0)
+  # 
+  # sampleID_l <- seqname_sID_wide_dt$sample_ID
+  # 
+  # seqname_sID_wide_dt <- seqname_sID_wide_dt %>% subset(select = -sample_ID)
+  # 
+  # ##
+  # tephi_prcomp1 <- prcomp(log10(seqname_sID_wide_dt+1))
+  # 
+  # emb <- Rtsne::Rtsne(tephi_prcomp1$x[,1:10])
+  # 
+  # embb <- emb$Y
+  # 
+  # rownames(embb) <- sampleID_l
+  # 
+  # embb_df <- as.data.frame(embb)
+  # 
+  # embb_dt <- setDT(embb_df, keep.rownames = "sample_ID")
+  # 
+  # embb_dt <- merge(embb_dt, comb_metadata_table, by ="sample_ID")
+  # 
+  # #embb_dt$City_Site <- str_c(embb_dt$City, ", ", embb_dt$Site)
+  # 
+  # embb_dt$Date <- as.Date(embb_dt$Date,  "%m-%d-%Y")
+  # 
+  # pal <- wes_palette("Darjeeling1", WWTP_citieslength, type = "continuous")
+  # 
+  # city_tsnep <- embb_dt %>%
+  #   ggplot(aes(x=V1, y=V2, color=City, text = Date)) +
+  #   geom_point(size = 3, alpha = 0.8) +
+  #   scale_color_manual(values = pal) +
+  #   theme_bw() +
+  #   labs(x="t-SNE 1", y="t-SNE 2")
+  # 
+  # ggplotly(city_tsnep, tooltip = c("City", "Date"))
+  # 
+  # 
+  # 
+  # 
+  # as.Date_origin <- function(x){
+  #   as.Date(x, origin = '1970-01-01')
+  # }
+  # 
+  # embb_dt$City_Date <- str_c(embb_dt$City, ", ", embb_dt$Date)
+  # 
+  # date_tsnep <- embb_dt %>%
+  #   ggplot(aes(x=V1, y=V2, color=as.integer(Date), text = City_Date)) +
+  #   geom_point(size = 3, alpha = 0.8) +
+  #   scale_color_gradient(low = "#FDD262",
+  #                        high = "#3F3F7B", labels=as.Date_origin, name = "Date") +
+  #   theme_bw() +
+  #   labs(x="t-SNE 1", y="t-SNE 2")
+  # 
+  # ggplotly(date_tsnep, tooltip = "City_Date")
+  # 
+  # 
+  # 
+  # 
+  # as.Date_origin <- function(x){
+  #   as.Date(x, origin = '1970-01-01')
+  # }
+  # 
+  # anim_date_tsnep <- embb_dt %>%
+  #   arrange(Date) %>%
+  #   ggplot(aes(x=V1, y=V2, color=as.integer(Date), group = Site)) +
+  #   geom_point(size = 3, alpha = 0.8) +
+  #   geom_path(linewidth = 1.1, alpha = 0.8) +
+  #   scale_color_gradient(low = "#FDD262",
+  #                        high = "#3F3F7B", labels=as.Date_origin, name = "Date") +
+  #   theme_bw() +
+  #   facet_wrap(~City) +
+  #   labs(x="t-SNE 1", y="t-SNE 2") +
+  #   transition_reveal(along = as.integer(Date)) 
+  # 
+  # 
+  # animate(anim_date_tsnep, nframes = 100, duration = 15, end_pause = 10,
+  #         renderer = gifski_renderer())
+  # 
+  # 
+
 }

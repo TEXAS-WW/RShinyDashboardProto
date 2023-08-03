@@ -8,7 +8,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                 ),
                 
                 # Define the UI components for the first tab
-                # div(
+                 tags$div( id = "wrappingEverything",
                  tabsetPanel(
                   tabPanel("Collection Site", 
                            tags$h2(tags$b("Wastewater Treatment Site")),
@@ -32,10 +32,14 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                   
                   # Add the new CDS tab
                   tabPanel("Comprehensive Deep Sequencing",
-                           tags$h2(tags$b("Comprehensive Deep Sequencing: Important Pathogens by City and by Species")),
-                           tags$h5("The upper plot shows the city-wide pathogen trends over time. Different lines represent the relative abundance of each pathogen in the sampled wastewater."),
-                           tags$h5("The lower plot displays the sample history of each site and its overall virus diversity. Use the controls on the left to adjust the view."),
-                           tags$hr(),
+                           # tags$h2(tags$b("Comprehensive Deep Sequencing: Important Pathogens by City and by Species")),
+                           # tags$h5("The upper plot shows the city-wide pathogen trends over time. Different lines represent the relative abundance of each pathogen in the sampled wastewater."),
+                           # tags$h5("The lower plot displays the sample history of each site and its overall virus diversity. Use the controls on the left to adjust the view."),
+                           # tags$hr(),
+                           
+                    tabsetPanel( 
+                      
+                      tabPanel("Important Pathogens",
                            fluidRow(
                              column(
                                width = 3,
@@ -67,7 +71,8 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                  # actionButton("cdsFocusRecent", "Focus on Most Recent Date"),
                                  # 
                                  # verbatimTextOutput("res")
-                                 
+                                 #tags$br(),
+                                 #fluidRow(plotlyOutput("collectionDatesPlot_cds"))
                                )
                              ),
                              column(
@@ -81,78 +86,104 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                  fluidRow( plotlyOutput("cds_TrendPlot")),
                                  div(class = 'cds-daterange-text', textOutput("cds_DateRange")),
                                  tags$br(),
-                                 fluidRow(plotlyOutput("cds_TrendPlot_zoomed")),
                                  fluidRow(plotlyOutput("collectionDatesPlot_cds"))
                                  
  
                                )
                              )
                            )
-                  ),
+                      ),
+                      # BEGINNING OF SECOND TAB 
+                      tabPanel("Genome Coverage of Important Pathogens",
+                                # Add a spot for the table
+                          reactableOutput("cdsImportantPathogensTable")
+                      ),
+                      
+                      ### BEGINNING OF THIRD TAB 
+                      tabPanel("Community Similarity Chart (t-SNE)",
+ 
+                               )
+                      )
+                  ) ,
 
-                  #### ADD QPCR TAB ####
+### ADD QPCR TAB ####
 
                   tabPanel("qPCR (Targeted)",
                            tags$h2(tags$b("Quantification of Specific Pathogens in Wastewater")),
                            tags$h5("The top figure shows the City-wide pathogen trends. Lines show the change in relative abundance of each pathogen in sampled wastewater"),
                            tags$h5("The bottom figure shows the sample history of each site and its overall virus diversity.\n This approach provides fast, quantitative measurements on a variety of known virus pathogens. Only recently detected pathogens from the targeted list are shown."),
                            tags$hr(),
-                           fluidRow(
-                             column(
-                               width = 3,
-                               align = "left",
-                               box(
-                                 title = "Control Panel",
-                                 inline = TRUE,
-                                 status = "primary",
-                                 solidHeader = TRUE,
-                                 radioButtons("qpcrViewType", "",
-                                              choices = list("View By City" = 'city',
-                                                             "View By Variant" = 'variant'),
-                                              selected = 'city',
-                                              inline = TRUE),
-
-                                 uiOutput("qpcrSelectionUI"),
-                                 # Add checkbox input for options to see either single or multiple plots
-                                 checkboxInput("qpcrPlotToggle", "Single/Multiple Plot", FALSE),
-                                 # Add date range input for trend plot
-                                 airDatepickerInput("qpcrDateRange", "Select Date Range:",
-                                                    value = c(minDate_qpcr,maxDate_qpcr),
-                                                    range = TRUE,
-                                                    update_on = "close",
-                                                    #placeholder = "You can pick 5 dates",
-                                                    todayButton = TRUE, #If TRUE, then button "Today" will be visible to set view to current date, if a Date is used, it will set view to the given date and select it..
-                                                    clearButton = TRUE,  #If TRUE, then button "Clear" will be visible.
-                                                    autoClose = TRUE, #If TRUE, then after date selection, datepicker will be closed.
-                                                    toggleSelected = TRUE) #When TRUE, in range mode, it's not possible to select the same date as start and end.
-
-                                 # actionButton("cdsFocusRecent", "Focus on Most Recent Date"),
-                                 #
-                                 # verbatimTextOutput("res")
-
-                               )
+                           
+                           
+                           tabsetPanel( 
+                             
+                             tabPanel("Important Pathogens",
+                                      fluidRow(
+                                        column(
+                                          width = 3,
+                                          align = "left",
+                                          box(
+                                            title = "Control Panel",
+                                            inline = TRUE,
+                                            status = "primary",
+                                            solidHeader = TRUE,
+                                            radioButtons("qpcrViewType", "",
+                                                         choices = list("View By City" = 'city',
+                                                                        "View By Variant" = 'variant'),
+                                                         selected = 'city',
+                                                         inline = TRUE),
+                                            
+                                            uiOutput("qpcrSelectionUI"),
+                                            # Add checkbox input for options to see either single or multiple plots
+                                            checkboxInput("qpcrPlotToggle", "Single/Multiple Plot", FALSE),
+                                            # Add date range input for trend plot
+                                            airDatepickerInput("qpcrDateRange", "Select Date Range:",
+                                                               value = c(minDate_qpcr,maxDate_qpcr),
+                                                               range = TRUE,
+                                                               update_on = "close",
+                                                               #placeholder = "You can pick 5 dates",
+                                                               todayButton = TRUE, #If TRUE, then button "Today" will be visible to set view to current date, if a Date is used, it will set view to the given date and select it..
+                                                               clearButton = TRUE,  #If TRUE, then button "Clear" will be visible.
+                                                               autoClose = TRUE, #If TRUE, then after date selection, datepicker will be closed.
+                                                               toggleSelected = TRUE) #When TRUE, in range mode, it's not possible to select the same date as start and end.
+                                            
+                                            # actionButton("cdsFocusRecent", "Focus on Most Recent Date"),
+                                            #
+                                            # verbatimTextOutput("res")
+                                            
+                                          )
+                                        ),
+                                        column(
+                                          width = 9,
+                                          align = "left",
+                                          box(
+                                            title = "",
+                                            status = "primary",
+                                            solidHeader = TRUE,
+                                            
+                                            fluidRow(plotlyOutput("qpcr_TrendPlot")),
+                                            div(class = 'qpcr_daterange-text', textOutput("qpcr_DateRange"))
+                                            
+                                          )
+                                        )
+                                      )
                              ),
-                             column(
-                               width = 9,
-                               align = "left",
-                               box(
-                                 title = "",
-                                 status = "primary",
-                                 solidHeader = TRUE,
-
-                                 fluidRow(plotlyOutput("qpcr_TrendPlot")),
-                                 div(class = 'qpcr_daterange-text', textOutput("qpcr_DateRange")),
-                                 tags$br(),
-                                 fluidRow(plotlyOutput("collectionDatesPlot_qpcr"))
-
-
-                               )
+                             # BEGINNING OF SECOND TAB 
+                             tabPanel("ElPaso qPCR",
+                                      # Add a spot for the table
+                                      
+                             ),
+                             
+                             ### BEGINNING OF THIRD TAB 
+                             tabPanel("Predictive Model",
+                                      
                              )
                            )
+
                   )
 
                   ### END OF QPCR UI TAB ###
-         #)           #DIV WRAP
+         )           #DIV WRAP
     )
 )
 
