@@ -28,4 +28,4 @@ minDate_qpcr<- as.Date(min(qPCR_ma_p$Week, na.rm = TRUE))
 maxDate_qpcr <- as.Date(max(qPCR_ma_p$Week, na.rm = TRUE))
 
 options(shiny.port = 8100)
-shinyApp(ui = ui, server = server )
+runApp(shinyApp(ui = ui, server = server ))
