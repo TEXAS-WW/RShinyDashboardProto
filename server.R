@@ -76,13 +76,11 @@ server <- function(input, output, session) {
         clearControls() %>%
         clearMarkers() %>%
         clearPopups() %>%
-        # # Add Texas state boundary
-        # addPolygons(data = texas_sf,
-        #             color = "#000000",
-        #             weight = 3,
-        #             fill = FALSE
-        #             #label = ~paste0(NAMELSAD, "<br>","Numbers of Site: ", wwtp)
-        # ) %>%
+        # Add Texas state boundary
+        addPolygons(data = texas_boundary,
+                    color = "#000000",
+                    weight = 3,
+                    fill = FALSE) %>%
         addPolygons(data = merged_CountyWWTP %>%
                       filter(is.na(totalWWTP)), fillColor = ~Color,
                     fillOpacity = ~FillOpacity,
@@ -126,23 +124,6 @@ server <- function(input, output, session) {
                                                   "border-color" = "rgba(0,0,0,0.5)"
                                                 )))%>%
         setView(lng = -99.56666, lat = 31, zoom = 6)# %>%
-        # addCircleMarkers(
-        #   data = CountyWWTP,
-        #   lng = CountyWWTP$county_centroid_lon,
-        #   lat = CountyWWTP$county_centroid_lat,
-        #   radius = ~Radius,
-        #   color = ~Color,
-        #   fillOpacity = 0.9,
-        #   fill = TRUE,
-        #   opacity = 0.9,
-        #   label = ~totalWWTP,
-        #   labelOptions = labelOptions(noHide = TRUE,
-        #                               textOnly = TRUE,
-        #                               direction = "center",
-        #                               style = list("font-weight" = "bold"),
-        #                               textsize = "12px"
-        #   )
-        # )
 
     } else {
 
@@ -161,11 +142,6 @@ server <- function(input, output, session) {
           data = county_selected,
           lng = county_selected$lon,
           lat = county_selected$lat,
-          #radius = 6,
-          #stroke = FALSE,
-          #fillColor = "black",
-          #fillOpacity = 1,
-          #weight = 5,
           label = ~paste0(WWTP[-1],", ", City),
           labelOptions = labelOptions(noHide = FALSE,
                                       direction = "center",

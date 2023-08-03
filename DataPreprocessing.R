@@ -59,6 +59,13 @@ ma <- function(x, n = 3){stats::filter(x, rep(1 / n, n), sides = 1)}
 WWTP <- read_excel("Data/WWTP/WWTP_location.xlsx")
 
 
+# Get state boundaries
+us_states <- states()
+
+# Filter for Texas
+texas_boundary <- us_states[us_states$STUSPS == "TX", ]
+
+
 CountyWWTP = WWTP[-1,] %>% 
   group_by(County, county_centroid_lon, county_centroid_lat) %>% 
   summarize(totalWWTP = n_distinct(WWTP))

@@ -1,10 +1,5 @@
 
 
-minDate_cds <- as.Date(min(major_path_expand_dt$Week, na.rm = TRUE))
-maxDate_cds <- as.Date(max(major_path_expand_dt$Week, na.rm = TRUE))
-
-minDate_qpcr<- as.Date(min(qPCR_ma_p$Week, na.rm = TRUE))
-maxDate_qpcr <- as.Date(max(qPCR_ma_p$Week, na.rm = TRUE))
 
 ui <- fluidPage(theme = shinytheme("cerulean"),
                 
@@ -13,9 +8,8 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                 ),
                 
                 # Define the UI components for the first tab
-                div(
+                # div(
                  tabsetPanel(
-                
                   tabPanel("Collection Site", 
                            tags$h2(tags$b("Wastewater Treatment Site")),
                            tags$h4("Explore a comprehensive map of wastewater treatment sites. Use the dropdown menu to filter by county."),
@@ -34,7 +28,6 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                            tags$style(type = "text/css", "#map {height: calc(75vh - 90px) !important;}"),
                            leafletOutput("map", width = "100%")
                   ),
-                  
                   
                   
                   # Add the new CDS tab
@@ -159,7 +152,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                   )
 
                   ### END OF QPCR UI TAB ###
-         )           #DIV WRAP
+         #)           #DIV WRAP
     )
 )
 

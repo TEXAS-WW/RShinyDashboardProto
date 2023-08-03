@@ -1,7 +1,5 @@
  /* Apply a light gray background and padding to all select input fields */
   
-div {
-
   .selectize-input {
     background-color: #f8f9fa !important;
     padding: 5px !important;
@@ -70,7 +68,11 @@ input:radio:checked + label {
   height:700px !important;
   width:1500px !important;
   }
-  
+      
+  cds_TrendPlot_zoomed{
+  height:700px !important;
+  width:800px !important;
+  }
       
   #collectionDatesPlot_cds{
   height:400px !important;
@@ -101,5 +103,5 @@ font-size: 20px;  /* Adjust size as needed */
 font-weight: bold;  /* Makes the text bold */
 color: #333;  /* Change the text color */
 /* Add any other CSS properties here */
-                                  }}
+                                  }
              
