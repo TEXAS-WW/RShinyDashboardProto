@@ -1,6 +1,6 @@
 
 ################# BEGINNING OF SERVER LOGIC OF SHINY #################
-
+image_src = "animation.gif"
 server <- function(input, output, session) {
   
   output$cds_DateRange <- renderText({
