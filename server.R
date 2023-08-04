@@ -641,97 +641,91 @@ output$qpcr_TrendPlot <- renderPlotly({
       ))
   })
 
+  output$qpcr_ElPaso_reactivePlot <- renderPlot({
+    
+    # Subset the data based on user's selection
+    subset_data <- subset(merged_data_long, WWTP == input$WWTP_input)
+    
+    # Generate the plot
+    p <- ggplot(subset_data, aes(x = Date, y = value, 
+                                      color = factor(variable, levels = c("scaled_concentration", "scaled_case_rate")), 
+                                      linetype = factor(variable, levels = c("scaled_concentration", "scaled_case_rate")))) +
+      geom_line() +
+      scale_color_manual(values = c("blue", "red"), labels = c("Normalized Concentration", "Case Rate")) +
+      scale_linetype_manual(values = c("solid", "dashed"), labels = c("Normalized Concentration", "Case Rate")) +
+      scale_size_manual(values = c(1, 2), guide = "none") +
+      labs(x = "Date", y = "Scaled Value", color = "Variable", 
+           linetype = "Variable", title = "Trends in Normalized Concentration and Case Rate") +
+      theme_bw() +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+      theme(legend.position = "bottom", panel.spacing.x = unit(1, "lines"))
+    
+    # If the checkbox is selected, add facet_wrap to the plot
+    if(input$wrap_plot) {
+      
+      p <- ggplot(merged_data_long, aes(x = Date, y = value, 
+                                   color = factor(variable, levels = c("scaled_concentration", "scaled_case_rate")), 
+                                   linetype = factor(variable, levels = c("scaled_concentration", "scaled_case_rate")))) +
+        geom_line() +
+        scale_color_manual(values = c("blue", "red"), labels = c("Normalized Concentration", "Case Rate")) +
+        scale_linetype_manual(values = c("solid", "dashed"), 
+                              labels = c("Normalized Concentration", "Case Rate")) +
+        scale_size_manual(values = c(1, 2), guide = "none") +
+        labs(x = "Date", y = "Scaled Value", color = "Variable", 
+             linetype = "Variable", title = "Trends in Normalized Concentration and Case Rate") +
+        facet_wrap(~ WWTP, scales = "free_y")+
+        theme_bw() +
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+        theme(legend.position = "bottom", panel.spacing.x = unit(1, "lines")) 
+        
+    }
+    
+    ggplotly(p,width = 1500, height = 700)
+  })
   
+  
+  # new outputs for the plotly plots and animation
+  output$city_tsnep <- renderPlotly({
+    # the code you provided...
+    pal <- wes_palette("Darjeeling1", WWTP_citieslength, type = "continuous")
+    
+    city_tsnep <- embb_dt %>%
+      ggplot(aes(x=V1, y=V2, color=City, text = Date)) +
+      geom_point(size = 3, alpha = 0.8) +
+      scale_color_manual(values = pal) +
+      theme_bw() +
+      labs(x="t-SNE 1", y="t-SNE 2")
+    ggplotly(city_tsnep, tooltip = c("City", "Date"))
+  })
+  
+  output$date_tsnep <- renderPlotly({
+    # the code you provided...
+    
+    date_tsnep <- embb_dt %>%
+      ggplot(aes(x=V1, y=V2, color=as.integer(Date), text = City_Date)) +
+      geom_point(size = 3, alpha = 0.8) +
+      scale_color_gradient(low = "#FDD262",
+                           high = "#3F3F7B", labels=as.Date_origin, name = "Date") +
+      theme_bw() +
+      labs(x="t-SNE 1", y="t-SNE 2")
+
+    ggplotly(date_tsnep, tooltip = "City_Date")
+  })
+  
+  # # to include a gif animation in a Shiny app you might need to save the gif and then include it into the app
+  # observe({
+  #   anim <- animate(anim_date_tsnep, nframes = 100, duration = 15, end_pause = 10, renderer = gifski_renderer())
+  #   anim_save("www/animation.gif", animation = anim)
+  # })
+  
+  output$animation <- renderUI({
+    tags$img(src = "animation.gif")  # include the gif into the app
+  })
   #####################
   
-  # #-# Calculate tSNE
-  # 
-  # comb_tax_table$RPKM <- as.numeric(comb_tax_table$RPKM)
-  # 
-  # seqname_sID_wide_dt <- 
-  #   comb_tax_table %>% 
-  #   subset(select = c("sequence_name", "sample_ID", "RPKM")) %>%
-  #   distinct(sequence_name, sample_ID, RPKM) %>%
-  #   group_by(sequence_name, sample_ID) %>%
-  #   summarize(RPKM = mean(RPKM)) %>%
-  #   pivot_wider(names_from = sequence_name, values_from = RPKM, values_fill = 0)
-  # 
-  # sampleID_l <- seqname_sID_wide_dt$sample_ID
-  # 
-  # seqname_sID_wide_dt <- seqname_sID_wide_dt %>% subset(select = -sample_ID)
-  # 
-  # ##
-  # tephi_prcomp1 <- prcomp(log10(seqname_sID_wide_dt+1))
-  # 
-  # emb <- Rtsne::Rtsne(tephi_prcomp1$x[,1:10])
-  # 
-  # embb <- emb$Y
-  # 
-  # rownames(embb) <- sampleID_l
-  # 
-  # embb_df <- as.data.frame(embb)
-  # 
-  # embb_dt <- setDT(embb_df, keep.rownames = "sample_ID")
-  # 
-  # embb_dt <- merge(embb_dt, comb_metadata_table, by ="sample_ID")
-  # 
-  # #embb_dt$City_Site <- str_c(embb_dt$City, ", ", embb_dt$Site)
-  # 
-  # embb_dt$Date <- as.Date(embb_dt$Date,  "%m-%d-%Y")
-  # 
-  # pal <- wes_palette("Darjeeling1", WWTP_citieslength, type = "continuous")
-  # 
-  # city_tsnep <- embb_dt %>%
-  #   ggplot(aes(x=V1, y=V2, color=City, text = Date)) +
-  #   geom_point(size = 3, alpha = 0.8) +
-  #   scale_color_manual(values = pal) +
-  #   theme_bw() +
-  #   labs(x="t-SNE 1", y="t-SNE 2")
-  # 
-  # ggplotly(city_tsnep, tooltip = c("City", "Date"))
-  # 
-  # 
-  # 
-  # 
-  # as.Date_origin <- function(x){
-  #   as.Date(x, origin = '1970-01-01')
-  # }
-  # 
-  # embb_dt$City_Date <- str_c(embb_dt$City, ", ", embb_dt$Date)
-  # 
-  # date_tsnep <- embb_dt %>%
-  #   ggplot(aes(x=V1, y=V2, color=as.integer(Date), text = City_Date)) +
-  #   geom_point(size = 3, alpha = 0.8) +
-  #   scale_color_gradient(low = "#FDD262",
-  #                        high = "#3F3F7B", labels=as.Date_origin, name = "Date") +
-  #   theme_bw() +
-  #   labs(x="t-SNE 1", y="t-SNE 2")
-  # 
-  # ggplotly(date_tsnep, tooltip = "City_Date")
-  # 
-  # 
-  # 
-  # 
-  # as.Date_origin <- function(x){
-  #   as.Date(x, origin = '1970-01-01')
-  # }
-  # 
-  # anim_date_tsnep <- embb_dt %>%
-  #   arrange(Date) %>%
-  #   ggplot(aes(x=V1, y=V2, color=as.integer(Date), group = Site)) +
-  #   geom_point(size = 3, alpha = 0.8) +
-  #   geom_path(linewidth = 1.1, alpha = 0.8) +
-  #   scale_color_gradient(low = "#FDD262",
-  #                        high = "#3F3F7B", labels=as.Date_origin, name = "Date") +
-  #   theme_bw() +
-  #   facet_wrap(~City) +
-  #   labs(x="t-SNE 1", y="t-SNE 2") +
-  #   transition_reveal(along = as.integer(Date)) 
-  # 
-  # 
-  # animate(anim_date_tsnep, nframes = 100, duration = 15, end_pause = 10,
-  #         renderer = gifski_renderer())
-  # 
-  # 
+  #-# Calculate tSNE
+
+  
+
 
 }
