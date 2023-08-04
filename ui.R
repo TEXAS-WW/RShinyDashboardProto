@@ -3,8 +3,11 @@
 
 ui <- fluidPage(theme = shinytheme("cerulean"),
                 
+                includeCSS("www/tephi_ww_dashboard.css"),
+                
                 tags$head(
                   tags$link(rel = "stylesheet", type = "text/css", href = "tephi_ww_dashboard.css")
+                  
                 ),
                 
                 # Define the UI components for the first tab
