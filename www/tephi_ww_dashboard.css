@@ -97,6 +97,16 @@ color: #333;  /* Change the text color */
   height:600px !important;
   width:1000px !important;
   }
+
+  city_tsnep{
+  height:700px !important;
+  width:600px !important;
+  }
+
+  animation{
+  height:700px !important;
+  width:600px !important;
+  }
   
 .qpcr-daterange-text {
 font-size: 20px;  /* Adjust size as needed */

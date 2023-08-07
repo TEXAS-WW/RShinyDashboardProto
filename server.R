@@ -1,6 +1,9 @@
 
 ################# BEGINNING OF SERVER LOGIC OF SHINY #################
-image_src = "animation.gif"
+image_src <- "animation.gif"
+
+image_src <- "www/animation.gif"
+  
 server <- function(input, output, session) {
   
   output$cds_DateRange <- renderText({
@@ -641,52 +644,49 @@ output$qpcr_TrendPlot <- renderPlotly({
       ))
   })
 
-  output$qpcr_ElPaso_reactivePlot <- renderPlot({
+  output$qpcr_ElPaso_reactivePlot <- renderPlotly({
     
     # Subset the data based on user's selection
-    subset_data <- subset(merged_data_long, WWTP == input$WWTP_input)
+    subset_ElPaso_data <- subset(ElPaso_data, WWTP == input$WWTP_input)
+    subset_ElPaso_caserate_data <- subset(ElPaso_caserate_data, WWTP == input$WWTP_input)
     
     # Generate the plot
-    p <- ggplot(subset_data, aes(x = Date, y = value, 
-                                      color = factor(variable, levels = c("scaled_concentration", "scaled_case_rate")), 
-                                      linetype = factor(variable, levels = c("scaled_concentration", "scaled_case_rate")))) +
-      geom_line() +
-      scale_color_manual(values = c("blue", "red"), labels = c("Normalized Concentration", "Case Rate")) +
-      scale_linetype_manual(values = c("solid", "dashed"), labels = c("Normalized Concentration", "Case Rate")) +
-      scale_size_manual(values = c(1, 2), guide = "none") +
-      labs(x = "Date", y = "Scaled Value", color = "Variable", 
-           linetype = "Variable", title = "Trends in Normalized Concentration and Case Rate") +
-      theme_bw() +
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-      theme(legend.position = "bottom", panel.spacing.x = unit(1, "lines"))
+    p <- ggplot() +
+      geom_line(data = subset_ElPaso_data, aes(x = Date, y = scaled_avg_copies_per_ml, color = "Wastewater Concentration", linetype = "Wastewater Concentration")) +
+      geom_line(data = subset_ElPaso_caserate_data, aes(x = Date, y = scaled_case_rate, color = "Case Rate", linetype = "Case Rate")) +
+      scale_color_manual(values = c("Wastewater Concentration" = "blue", "Case Rate" = "red"), name = "Data Type", breaks = c("Wastewater Concentration", "Case Rate")) +
+      scale_linetype_manual(values = c("Wastewater Concentration" = "solid", "Case Rate" = "dashed"), name = "Data Type", breaks = c("Wastewater Concentration", "Case Rate")) +
+     # scale_size_manual(values = c(1, 2), guide = "none") +
+      
+      labs(x = "Date", y = "Normalized Wastewater Concentration", title = "Trends in Wastewater Concentration and Case Rate") +
+      theme_minimal() +
+      theme(legend.position = "bottom")
+    
+    
+
     
     # If the checkbox is selected, add facet_wrap to the plot
     if(input$wrap_plot) {
       
-      p <- ggplot(merged_data_long, aes(x = Date, y = value, 
-                                   color = factor(variable, levels = c("scaled_concentration", "scaled_case_rate")), 
-                                   linetype = factor(variable, levels = c("scaled_concentration", "scaled_case_rate")))) +
-        geom_line() +
-        scale_color_manual(values = c("blue", "red"), labels = c("Normalized Concentration", "Case Rate")) +
-        scale_linetype_manual(values = c("solid", "dashed"), 
-                              labels = c("Normalized Concentration", "Case Rate")) +
-        scale_size_manual(values = c(1, 2), guide = "none") +
-        labs(x = "Date", y = "Scaled Value", color = "Variable", 
-             linetype = "Variable", title = "Trends in Normalized Concentration and Case Rate") +
-        facet_wrap(~ WWTP, scales = "free_y")+
-        theme_bw() +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-        theme(legend.position = "bottom", panel.spacing.x = unit(1, "lines")) 
+      p <-  ggplot() +
+        geom_line(data = ElPaso_data, aes(x = Date, y = scaled_avg_copies_per_ml, color = "Wastewater Concentration", linetype = "Wastewater Concentration")) +
+        geom_line(data = ElPaso_caserate_data, aes(x = Date, y = scaled_case_rate, color = "Case Rate", linetype = "Case Rate")) +
+        scale_color_manual(values = c("Wastewater Concentration" = "blue", "Case Rate" = "red"), name = "Data Type", breaks = c("Wastewater Concentration", "Case Rate")) +
+        scale_linetype_manual(values = c("Wastewater Concentration" = "solid", "Case Rate" = "dashed"), name = "Data Type", breaks = c("Wastewater Concentration", "Case Rate")) +
+        labs(x = "Date", y = "Normalized Wastewater Concentration", title = "Trends in Wastewater Concentration and Case Rate") +
+        facet_wrap(~ WWTP, scales = "free_y") +
+        theme_minimal() +
+        theme(legend.position = "bottom")
         
     }
     
-    ggplotly(p,width = 1500, height = 700)
+    ggplotly(p, width = 1500, height = 700)
   })
   
   
   # new outputs for the plotly plots and animation
+  
   output$city_tsnep <- renderPlotly({
-    # the code you provided...
     pal <- wes_palette("Darjeeling1", WWTP_citieslength, type = "continuous")
     
     city_tsnep <- embb_dt %>%
@@ -695,11 +695,11 @@ output$qpcr_TrendPlot <- renderPlotly({
       scale_color_manual(values = pal) +
       theme_bw() +
       labs(x="t-SNE 1", y="t-SNE 2")
-    ggplotly(city_tsnep, tooltip = c("City", "Date"))
+    ggplotly(city_tsnep, tooltip = c("City", "Date"), width = 1000, height = 700)
   })
   
+  
   output$date_tsnep <- renderPlotly({
-    # the code you provided...
     
     date_tsnep <- embb_dt %>%
       ggplot(aes(x=V1, y=V2, color=as.integer(Date), text = City_Date)) +
@@ -717,15 +717,14 @@ output$qpcr_TrendPlot <- renderPlotly({
   #   anim <- animate(anim_date_tsnep, nframes = 100, duration = 15, end_pause = 10, renderer = gifski_renderer())
   #   anim_save("www/animation.gif", animation = anim)
   # })
-  
+
   output$animation <- renderUI({
-    tags$img(src = "animation.gif")  # include the gif into the app
+    tags$img(src = image_src, width = 1000, height = 700)  # include the gif into the app
   })
   #####################
   
   #-# Calculate tSNE
 
-  
 
 
 }
