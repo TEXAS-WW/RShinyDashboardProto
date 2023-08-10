@@ -1,4 +1,4 @@
-
+source("screen_detector_script.R")
 
 
 ui <- fluidPage(theme = shinytheme("cerulean"),
@@ -7,6 +7,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                 tags$head(
                   tags$link(rel = "stylesheet", type = "text/css", href = "tephi_ww_dashboard.css")
                 ),
+                tags$script(screen_detector_script),
                 
                 # Define the UI components for the first tab
                  tags$div( id = "wrappingEverything",

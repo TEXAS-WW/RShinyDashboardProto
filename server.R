@@ -292,7 +292,8 @@ server <- function(input, output, session) {
         plot <- plot 
       }
       
-      ggplotly(plot, width = 1500, height = 700) %>%
+      #ggplotly(plot, width = 1500, height = 700) %>%
+      ggplotly(plot, width = input$dimension[1], height = input$dimension[2]) %>%
         layout(yaxis = list(title = list(
           text ='City-wide abundance (RPKMF)                                          \n', 
           xanchor = 'right', yanchor =  'center')))
