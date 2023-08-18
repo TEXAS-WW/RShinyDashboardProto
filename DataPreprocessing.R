@@ -3,6 +3,7 @@
 ###########################################################
 
 # Required Packages
+source("variables.R")
 suppressPackageStartupMessages({
   library(feasts)
   library(tsibble)
@@ -47,7 +48,7 @@ suppressPackageStartupMessages({
   library(reactablefmtr)
   library(gganimate)
   library(sparkline)
- # install_github("timelyportfolio/dataui")
+  # install_github("timelyportfolio/dataui")
   library(dataui)
   library(devtools)
   library(viridis)
@@ -56,8 +57,6 @@ suppressPackageStartupMessages({
   library(cdlTools) # converting state fips to state name
   options(tigris_use_cache  = TRUE)
 })
-
-
 
 
 #-# moving average function
@@ -102,11 +101,11 @@ merged_CountyWWTP$Color = replace(merged_CountyWWTP$Color, is.na(merged_CountyWW
 county_data_shp$wwtp = rep(0,length(county_data_shp$NAMELSAD))
 
 county_data_shp$wwtp <- ifelse(county_data_shp$NAMELSAD == "Harris County", 9,
-                                 ifelse(county_data_shp$NAMELSAD == "El Paso County", 4,
-                                        ifelse(county_data_shp$NAMELSAD == "Fort Bend County", 1,
-                                          ifelse(county_data_shp$NAMELSAD == "Cameron County", 2,
-                                                 ifelse(county_data_shp$NAMELSAD == "Lubbock County", 1,
-                                                        ifelse(county_data_shp$NAMELSAD == "Wichita County", 1, 0))))))
+                               ifelse(county_data_shp$NAMELSAD == "El Paso County", 4,
+                                      ifelse(county_data_shp$NAMELSAD == "Fort Bend County", 1,
+                                             ifelse(county_data_shp$NAMELSAD == "Cameron County", 2,
+                                                    ifelse(county_data_shp$NAMELSAD == "Lubbock County", 1,
+                                                           ifelse(county_data_shp$NAMELSAD == "Wichita County", 1, 0))))))
 
 
 
@@ -143,7 +142,7 @@ comb_metadata_table$Date <- as.Date(comb_metadata_table$Date)
 ## replace real site names with codes 
 code_dt <- read_excel(sprintf("%s/Data/site_coding/WWTP_codes1.xlsx", find_rstudio_root_file()))
 
-    
+
 comb_metadata_table <- merge(comb_metadata_table, code_dt, 
                              by.x = "Site", by.y = "Name", all.x = T)
 
@@ -460,4 +459,82 @@ ElPaso_caserate_data <- ElPaso_caserate %>%
   ) %>%
   ungroup()
 
+##### preparing data to make a pulldown to check any virus species
 
+species_abund_dt <- merge(comb_tax_table, comb_metadata_table, 
+                          by = "sample_ID") %>%
+  mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
+  group_by(City) %>%
+  filter(n_distinct(Week) >= 3) %>%
+  ungroup() %>%
+  group_by(Site, species, Week) %>%
+  summarize(RPKMS = sum(RPKM),
+            City = first(City)) %>%
+  ungroup() %>%
+  group_by(City, species, Week) %>%
+  summarize(RPKMF = mean(RPKMS)) %>%
+  ungroup() %>%
+  complete(nesting(Week, City), species, fill = list(RPKMF=0)) %>%
+  group_by(City, species) %>%
+  arrange(City, species, Week) %>%
+  mutate(moving_average = ma(RPKMF)) %>%
+  ungroup()
+
+
+prevalent_sp_dt <- merge(species_abund_dt, city_dates, by = c("City", "Week")) %>%
+  group_by(species) %>%
+  mutate(nonzero = sum(RPKMF != 0)) %>%
+  filter(nonzero >=10) %>%
+  select(-nonzero) %>%
+  ungroup() %>%
+  arrange(City, species, Week)
+
+
+#### INTERACTIVE TABLE 
+
+
+# trend_major_path_dt <- major_path_expand_dt %>%
+#   group_by(City, species) %>%
+#   mutate(most_recent_week = last(Week),
+#          four_weeks_before = (most_recent_week - 28)) %>%
+#   filter(Week == most_recent_week |
+#            Week == four_weeks_before) %>%
+#   filter(n() == 2) %>%
+#   mutate(observation_label = case_when(
+#     Week == most_recent_week ~ "Most Recent Week",
+#     Week == four_weeks_before ~ "Four Weeks Earlier",
+#     TRUE ~ "other"),
+#     difference = (moving_average[Week == most_recent_week] / moving_average[Week == four_weeks_before]) -1
+#   ) %>%
+#   mutate(Interpretation = case_when(
+#     moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference > 0.25 ~ "Increase from Baseline",
+#     moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference < -0.25 ~ "Decrease from Baseline",
+#     moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference >= -0.25 & difference <= 0.25 ~ "Little Change",
+#     moving_average[Week == most_recent_week] == 0 & moving_average[Week == four_weeks_before] == 0  ~ "Constant at 0",
+#     moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] == 0  ~ "(Re)-emerging from 0",
+#     moving_average[Week == most_recent_week] == 0 & moving_average[Week == four_weeks_before] > 0  ~ "Going to 0",
+#     TRUE ~ "other"
+#   ))
+# 
+# trend_major_path_dt %>%
+#   select(c(City, Week, most_recent_week, species, difference, Interpretation, moving_average)) %>%
+#   filter(Week == most_recent_week) %>%
+#   distinct() %>%
+#   mutate(interpretation_color = case_when(
+#     Interpretation == "Increase from Baseline" ~ "orangered",
+#     Interpretation == "Decrease from Baseline" ~ "cadetblue",
+#     Interpretation == "Little Change" ~ "grey60",
+#     Interpretation == "Constant at 0" ~ "white",
+#     Interpretation == "(Re)-emerging from 0" ~ "purple",
+#     Interpretation == "Going to 0" ~ "blue",
+#     TRUE ~ "black"
+#   ),
+#   difference = case_when(
+#     #difference == "-Inf" ~ 0,
+#     difference == "NaN" ~ 0,
+#     Interpretation == "Going to 0" ~ -1,
+#     Interpretation == "(Re)-emerging from 0" ~ 1,
+#     TRUE ~ difference
+#   ),
+#   difference = difference * 100) %>%
+#   arrange(desc(difference)) 

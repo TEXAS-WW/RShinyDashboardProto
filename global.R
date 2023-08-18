@@ -1,6 +1,7 @@
 source("DataPreprocessing.R")
 source("server.R")
 source("ui.R")
+source("variables.R")
 options(shiny.autoreload = TRUE)
 
 ### POTENTIAL IMPROVEMENT: DEBOUNCE()
