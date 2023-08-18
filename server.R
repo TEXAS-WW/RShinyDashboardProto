@@ -742,12 +742,12 @@ server <- function(input, output, session) {
                City %in% input$virusCity&
                species %in% input$virus) %>%
       mutate(alabel = str_c(City, ", ", RPKMF, "\n", Week))
-    
+      
     df
   })
-  
+      
   output$virusPlot <- renderPlotly({
-    
+
     virus_plot <- virus_df() %>%
       ggplot(aes(x = Week, y = moving_average, color = City)) +
       geom_line(size = 1, alpha = 0.9) +
@@ -762,7 +762,7 @@ server <- function(input, output, session) {
     
     if(input$virusPlotToggle) {
       virus_plot <- virus_plot + facet_wrap(vars(City),
-                                            scales = "free_y")
+                                          scales = "free_y")
       
     } else {
       virus_plot <- virus_plot

@@ -160,7 +160,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                                       title = "Control Panel",
                                                       status = "primary",
                                                       solidHeader = TRUE,
-                                                      
+
                                                       selectInput("virus", "Select Virus:",
                                                                   choices = unique(prevalent_sp_dt$species),
                                                                   selected = unique(prevalent_sp_dt$species)[1]),
@@ -169,7 +169,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                                                      choices = unique(prevalent_sp_dt$City),
                                                                      multiple = TRUE,
                                                                      selected = unique(prevalent_sp_dt$City)[1]),
-                                                      
+
                                                       # Add checkbox input for options to see either single or multiple plots
                                                       checkboxInput("virusPlotToggle", "Single/Multiple Plot", FALSE)
                                                     )
