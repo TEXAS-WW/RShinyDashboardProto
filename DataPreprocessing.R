@@ -493,48 +493,48 @@ prevalent_sp_dt <- merge(species_abund_dt, city_dates, by = c("City", "Week")) %
 #### INTERACTIVE TABLE 
 
 
-# trend_major_path_dt <- major_path_expand_dt %>%
-#   group_by(City, species) %>%
-#   mutate(most_recent_week = last(Week),
-#          four_weeks_before = (most_recent_week - 28)) %>%
-#   filter(Week == most_recent_week |
-#            Week == four_weeks_before) %>%
-#   filter(n() == 2) %>%
-#   mutate(observation_label = case_when(
-#     Week == most_recent_week ~ "Most Recent Week",
-#     Week == four_weeks_before ~ "Four Weeks Earlier",
-#     TRUE ~ "other"),
-#     difference = (moving_average[Week == most_recent_week] / moving_average[Week == four_weeks_before]) -1
-#   ) %>%
-#   mutate(Interpretation = case_when(
-#     moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference > 0.25 ~ "Increase from Baseline",
-#     moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference < -0.25 ~ "Decrease from Baseline",
-#     moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference >= -0.25 & difference <= 0.25 ~ "Little Change",
-#     moving_average[Week == most_recent_week] == 0 & moving_average[Week == four_weeks_before] == 0  ~ "Constant at 0",
-#     moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] == 0  ~ "(Re)-emerging from 0",
-#     moving_average[Week == most_recent_week] == 0 & moving_average[Week == four_weeks_before] > 0  ~ "Going to 0",
-#     TRUE ~ "other"
-#   ))
-# 
-# trend_major_path_dt %>%
-#   select(c(City, Week, most_recent_week, species, difference, Interpretation, moving_average)) %>%
-#   filter(Week == most_recent_week) %>%
-#   distinct() %>%
-#   mutate(interpretation_color = case_when(
-#     Interpretation == "Increase from Baseline" ~ "orangered",
-#     Interpretation == "Decrease from Baseline" ~ "cadetblue",
-#     Interpretation == "Little Change" ~ "grey60",
-#     Interpretation == "Constant at 0" ~ "white",
-#     Interpretation == "(Re)-emerging from 0" ~ "purple",
-#     Interpretation == "Going to 0" ~ "blue",
-#     TRUE ~ "black"
-#   ),
-#   difference = case_when(
-#     #difference == "-Inf" ~ 0,
-#     difference == "NaN" ~ 0,
-#     Interpretation == "Going to 0" ~ -1,
-#     Interpretation == "(Re)-emerging from 0" ~ 1,
-#     TRUE ~ difference
-#   ),
-#   difference = difference * 100) %>%
-#   arrange(desc(difference)) 
+trend_major_path_dt <- major_path_expand_dt %>%
+  group_by(City, species) %>%
+  mutate(most_recent_week = last(Week),
+         four_weeks_before = (most_recent_week - 28)) %>%
+  filter(Week == most_recent_week |
+           Week == four_weeks_before) %>%
+  filter(n() == 2) %>%
+  mutate(observation_label = case_when(
+    Week == most_recent_week ~ "Most Recent Week",
+    Week == four_weeks_before ~ "Four Weeks Earlier",
+    TRUE ~ "other"),
+    difference = (moving_average[Week == most_recent_week] / moving_average[Week == four_weeks_before]) -1
+  ) %>%
+  mutate(Interpretation = case_when(
+    moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference > 0.25 ~ "Increase from Baseline",
+    moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference < -0.25 ~ "Decrease from Baseline",
+    moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference >= -0.25 & difference <= 0.25 ~ "Little Change",
+    moving_average[Week == most_recent_week] == 0 & moving_average[Week == four_weeks_before] == 0  ~ "Constant at 0",
+    moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] == 0  ~ "(Re)-emerging from 0",
+    moving_average[Week == most_recent_week] == 0 & moving_average[Week == four_weeks_before] > 0  ~ "Going to 0",
+    TRUE ~ "other"
+  ))
+
+trend_major_path_dt %>%
+  select(c(City, Week, most_recent_week, species, difference, Interpretation, moving_average)) %>%
+  filter(Week == most_recent_week) %>%
+  distinct() %>%
+  mutate(interpretation_color = case_when(
+    Interpretation == "Increase from Baseline" ~ "orangered",
+    Interpretation == "Decrease from Baseline" ~ "cadetblue",
+    Interpretation == "Little Change" ~ "grey60",
+    Interpretation == "Constant at 0" ~ "white",
+    Interpretation == "(Re)-emerging from 0" ~ "purple",
+    Interpretation == "Going to 0" ~ "blue",
+    TRUE ~ "black"
+  ),
+  difference = case_when(
+    #difference == "-Inf" ~ 0,
+    difference == "NaN" ~ 0,
+    Interpretation == "Going to 0" ~ -1,
+    Interpretation == "(Re)-emerging from 0" ~ 1,
+    TRUE ~ difference
+  ),
+  difference = difference * 100) %>%
+  arrange(desc(difference))
