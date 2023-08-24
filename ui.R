@@ -10,7 +10,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                 tags$head(
                   tags$link(rel = "stylesheet", type = "text/css", href = "tephi_ww_dashboard.css")
                 ),
-                tags$script(screen_detector_script),
+                tags$script(HTML(screen_detector_script)),
                 
                 # Define the UI components for the first tab
                 tags$div( id = "wrappingEverything",
@@ -43,7 +43,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                                 tags$hr(),
                                                 fluidRow(
                                                   column(
-                                                    width = 3,
+                                                    width = 2,
                                                     align = "left",
                                                     box(
                                                       title = "Control Panel",
@@ -57,7 +57,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                                     )
                                                   ),
                                                   column(
-                                                    width = 9,
+                                                    width = 10,
                                                     align = "left",
                                                     box(
                                                       title = "",
@@ -75,7 +75,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                                 tags$hr(),
                                                 fluidRow(
                                                   column(
-                                                    width = 3,
+                                                    width = 2,
                                                     align = "left",
                                                     box(
                                                       title = "Control Panel",
@@ -103,7 +103,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                                     )
                                                   ),
                                                   column(
-                                                    width = 9,
+                                                    width = 10,
                                                     align = "left",
                                                     box(
                                                       title = "",
@@ -154,7 +154,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                                 tags$hr(),
                                                 fluidRow(
                                                   column(
-                                                    width = 3,
+                                                    width = 2,
                                                     align = "left",
                                                     box(
                                                       title = "Control Panel",
@@ -175,7 +175,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                                     )
                                                   ),
                                                   column(
-                                                    width = 9,
+                                                    width = 10,
                                                     align = "left",
                                                     box(
                                                       title = "",
@@ -211,7 +211,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                                 tags$hr(),
                                                 fluidRow(
                                                   column(
-                                                    width = 3,
+                                                    width = 2,
                                                     align = "left",
                                                     box(
                                                       title = "Control Panel",
@@ -241,7 +241,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                                     )
                                                   ),
                                                   column(
-                                                    width = 9,
+                                                    width = 10,
                                                     align = "left",
                                                     box(
                                                       title = "",
@@ -262,7 +262,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                                 tags$hr(),
                                                 fluidRow(
                                                   column(
-                                                    width = 3,
+                                                    width = 2,
                                                     align = "left",
                                                     box(
                                                       title = "Control Panel",
@@ -275,7 +275,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                                     )
                                                   ),
                                                   column(
-                                                    width = 9,
+                                                    width = 10,
                                                     align = "left",
                                                     box(
                                                       title = "",

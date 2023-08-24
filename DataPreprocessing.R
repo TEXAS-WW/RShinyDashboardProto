@@ -48,7 +48,7 @@ suppressPackageStartupMessages({
   library(reactablefmtr)
   library(gganimate)
   library(sparkline)
-  # install_github("timelyportfolio/dataui")
+ # install_github("timelyportfolio/dataui")
   library(dataui)
   library(devtools)
   library(viridis)
@@ -101,11 +101,11 @@ merged_CountyWWTP$Color = replace(merged_CountyWWTP$Color, is.na(merged_CountyWW
 county_data_shp$wwtp = rep(0,length(county_data_shp$NAMELSAD))
 
 county_data_shp$wwtp <- ifelse(county_data_shp$NAMELSAD == "Harris County", 9,
-                               ifelse(county_data_shp$NAMELSAD == "El Paso County", 4,
-                                      ifelse(county_data_shp$NAMELSAD == "Fort Bend County", 1,
-                                             ifelse(county_data_shp$NAMELSAD == "Cameron County", 2,
-                                                    ifelse(county_data_shp$NAMELSAD == "Lubbock County", 1,
-                                                           ifelse(county_data_shp$NAMELSAD == "Wichita County", 1, 0))))))
+                                 ifelse(county_data_shp$NAMELSAD == "El Paso County", 4,
+                                        ifelse(county_data_shp$NAMELSAD == "Fort Bend County", 1,
+                                          ifelse(county_data_shp$NAMELSAD == "Cameron County", 2,
+                                                 ifelse(county_data_shp$NAMELSAD == "Lubbock County", 1,
+                                                        ifelse(county_data_shp$NAMELSAD == "Wichita County", 1, 0))))))
 
 
 
@@ -142,7 +142,7 @@ comb_metadata_table$Date <- as.Date(comb_metadata_table$Date)
 ## replace real site names with codes 
 code_dt <- read_excel(sprintf("%s/Data/site_coding/WWTP_codes1.xlsx", find_rstudio_root_file()))
 
-
+    
 comb_metadata_table <- merge(comb_metadata_table, code_dt, 
                              by.x = "Site", by.y = "Name", all.x = T)
 

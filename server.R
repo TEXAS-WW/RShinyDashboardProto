@@ -274,7 +274,7 @@ server <- function(input, output, session) {
         plot <- plot 
       }
       
-      ggplotly(plot, width = input$dimension[1], height = input$dimension[2]) %>%
+      ggplotly(plot, width = input$cdsPlotDimensions[1], height = input$cdsPlotDimensions[2]) %>%
         layout(yaxis = list(title = list(
           text ='City-wide abundance (RPKMF)                                          \n', 
           xanchor = 'right', yanchor =  'center')))
@@ -300,7 +300,7 @@ server <- function(input, output, session) {
         plot <- plot 
       }
       
-      ggplotly(plot, width = input$dimension[1], height = input$dimension[2]) %>%
+      ggplotly(plot, width = input$cdsPlotDimensions[1], height = input$cdsPlotDimensions[2]) %>%
         layout(
           yaxis = list(
             title = list(
@@ -447,7 +447,7 @@ server <- function(input, output, session) {
         qpcr_plot <- qpcr_plot
       }
       
-      ggplotly(qpcr_plot) %>%
+      ggplotly(qpcr_plot, width = input$qpcr_plot_dimension[1], height = input$qpcr_plot_dimension[2]) %>%
         layout(yaxis = list(title = list(
           text ='City-wide abundance (genome copies/sample)                                          \n',
           xanchor = 'right', yanchor =  'center')))
@@ -475,7 +475,7 @@ server <- function(input, output, session) {
         qpcr_plot <- qpcr_plot
       }
       
-      ggplotly(qpcr_plot) %>%
+      ggplotly(qpcr_plot, width = input$qpcr_plot_dimension[1], height = input$qpcr_plot_dimension[2]) %>%
         layout(yaxis = list(title = list(
           text ='City-wide abundance (genome copies/sample)                                          \n',
           xanchor = 'right', yanchor =  'center')))
@@ -519,7 +519,7 @@ server <- function(input, output, session) {
       theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust=1),
             legend.position = "Off")
     
-    ggplotly(plot, width = input$dimension[1], height = input$dimension[2])
+    ggplotly(plot, width = input$collectionDatesPlot_cds_dimension[1], height = input$collectionDatesPlot_cds_dimension[2])
     
   })
   
@@ -690,7 +690,7 @@ server <- function(input, output, session) {
       
     }
     
-    ggplotly(p, width = input$dimension[1], height = input$dimension[2])
+    ggplotly(p, width = input$qpcr_ElPaso_reactivePlot_dimension[1], height = input$qpcr_ElPaso_reactivePlot_dimension[2])
   })
   
   
@@ -705,7 +705,7 @@ server <- function(input, output, session) {
       scale_color_manual(values = pal) +
       theme_bw() +
       labs(x="t-SNE 1", y="t-SNE 2")
-    ggplotly(city_tsnep, tooltip = c("City", "Date"), width = input$dimension[1], height = input$dimension[2])
+    ggplotly(city_tsnep,  width = input$city_tsnep_dimension[1], height = input$city_tsnep_dimension[2],  tooltip = c("City", "Date"))
   })
   
   
@@ -719,7 +719,7 @@ server <- function(input, output, session) {
       theme_bw() +
       labs(x="t-SNE 1", y="t-SNE 2")
     
-    ggplotly(date_tsnep, tooltip = "City_Date")
+    ggplotly(date_tsnep, width = input$date_tsnep_dimension[1], height = input$date_tsnep_dimension[2],  tooltip = "City_Date")
   })
   
   # # to include a gif animation in a Shiny app you might need to save the gif and then include it into the app
@@ -768,7 +768,7 @@ server <- function(input, output, session) {
       virus_plot <- virus_plot
     }
     
-    ggplotly(virus_plot, width = input$dimension[1], height = input$dimension[2]) %>%
+    ggplotly(virus_plot, width = input$virusPlot_dimension[1], height = input$virusPlot_dimension[2]) %>%
       layout(
         xaxis = list(title = 'Date'), yaxis = list(title = 'City-Wide Abundance (RPKMF)')
       )
