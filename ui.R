@@ -160,7 +160,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                                       title = "Control Panel",
                                                       status = "primary",
                                                       solidHeader = TRUE,
-
+                                                      
                                                       selectInput("virus", "Select Virus:",
                                                                   choices = unique(prevalent_sp_dt$species),
                                                                   selected = unique(prevalent_sp_dt$species)[1]),
@@ -169,7 +169,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                                                      choices = unique(prevalent_sp_dt$City),
                                                                      multiple = TRUE,
                                                                      selected = unique(prevalent_sp_dt$City)[1]),
-
+                                                      
                                                       # Add checkbox input for options to see either single or multiple plots
                                                       checkboxInput("virusPlotToggle", "Single/Multiple Plot", FALSE)
                                                     )
@@ -254,46 +254,46 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
                                                     )
                                                   )
                                                 )
-                                       ),
-                                       # BEGINNING OF SECOND TAB 
-                                       tabPanel("El Paso ",
-                                                tags$h2(tags$b("Wastewater Concentration Trend in El Paso and its relationship with case data")),
-                                                #tags$h5("This approach provides fast, quantitative measurements on a variety of known virus pathogens. Only recently detected pathogens from the targeted list are shown."),
-                                                tags$hr(),
-                                                fluidRow(
-                                                  column(
-                                                    width = 2,
-                                                    align = "left",
-                                                    box(
-                                                      title = "Control Panel",
-                                                      inline = TRUE,
-                                                      status = "primary",
-                                                      solidHeader = TRUE,
-                                                      selectInput("WWTP_input", "Select WWTP site:", 
-                                                                  choices = unique(merged_data$WWTP), selected = merged_data$WWTP[1]),
-                                                      checkboxInput("wrap_plot", "Wrap plot:", FALSE)
-                                                    )
-                                                  ),
-                                                  column(
-                                                    width = 10,
-                                                    align = "left",
-                                                    box(
-                                                      title = "",
-                                                      status = "primary",
-                                                      solidHeader = TRUE,
-                                                      fluidRow(plotlyOutput("qpcr_ElPaso_reactivePlot")),
-                                                      
-                                                    )
-                                                  )
-                                                )
-                                                # Add a spot for the table
-                                                
-                                       ),
-                                       
-                                       ### BEGINNING OF THIRD TAB 
-                                       tabPanel("Predictive Model"
-                                                
-                                       )
+                                       )#,
+                                       # # BEGINNING OF SECOND TAB 
+                                       # tabPanel("El Paso ",
+                                       #          tags$h2(tags$b("Wastewater Concentration Trend in El Paso and its relationship with case data")),
+                                       #          #tags$h5("This approach provides fast, quantitative measurements on a variety of known virus pathogens. Only recently detected pathogens from the targeted list are shown."),
+                                       #          tags$hr(),
+                                       #          fluidRow(
+                                       #            column(
+                                       #              width = 2,
+                                       #              align = "left",
+                                       #              box(
+                                       #                title = "Control Panel",
+                                       #                inline = TRUE,
+                                       #                status = "primary",
+                                       #                solidHeader = TRUE,
+                                       #                selectInput("WWTP_input", "Select WWTP site:", 
+                                       #                            choices = unique(merged_data$WWTP), selected = merged_data$WWTP[1]),
+                                       #                checkboxInput("wrap_plot", "Wrap plot:", FALSE)
+                                       #              )
+                                       #            ),
+                                       #            column(
+                                       #              width = 10,
+                                       #              align = "left",
+                                       #              box(
+                                       #                title = "",
+                                       #                status = "primary",
+                                       #                solidHeader = TRUE,
+                                       #                fluidRow(plotlyOutput("qpcr_ElPaso_reactivePlot")),
+                                       #                
+                                       #              )
+                                       #            )
+                                       #          )
+                                       #          # Add a spot for the table
+                                       #          
+                                       # )#,
+
+                                       # ### BEGINNING OF THIRD TAB
+                                       # tabPanel("Predictive Model"
+                                       # 
+                                       # )
                                      )
                             )
                             ### END OF QPCR UI TAB ###

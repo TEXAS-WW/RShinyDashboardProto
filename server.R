@@ -1,58 +1,74 @@
 
+
 ################# BEGINNING OF SERVER LOGIC OF SHINY #################
 #source("DataPreprocessing.R")
 source("variables.R")
 
 server <- function(input, output, session) {
-  
   output$cds_DateRange <- renderText({
     # make sure end date later than start date
     validate(
-      need(input$cdsDateRange[2] > input$cdsDateRange[1], "End date is earlier than start date"
+      need(
+        input$cdsDateRange[2] > input$cdsDateRange[1],
+        "End date is earlier than start date"
+      )
+    )
+    
+    # make sure end date later than start date
+    validate(
+      need(
+        input$cdsDateRange[2] <= maxDate_cds,
+        "Date is not available, please select Date Range based on the available sample collection dates below."
+      ),
+      need(
+        input$cdsDateRange[1] >= minDate_cds,
+        "Date is not available, please select Date Range based on the available sample collection dates below."
       )
     )
     
     
-    # make sure end date later than start date
-    validate(
-      need(input$cdsDateRange[2] <= maxDate_cds, "Date is not available, please select Date Range based on the available sample collection dates below."),
-      need(input$cdsDateRange[1] >= minDate_cds, "Date is not available, please select Date Range based on the available sample collection dates below." )
+    paste(
+      "Your date range is",
+      difftime(input$cdsDateRange[2], input$cdsDateRange[1], units =
+                 "days"),
+      "days"
     )
-    # 
-    # # make sure end date later than start date
-    # validate(
-    #   need(input$cdsDateRange[2] %in% as.Date(major_path_expand_dt$Week), "Date is not available, please select Date Range based on the available sample collection dates below.")
-    #   
-    # )
-    
-    paste("Your date range is", 
-          difftime(input$cdsDateRange[2], input$cdsDateRange[1], units="days"),
-          "days")
   })
   
   output$qpcr_DateRange <- renderText({
     # make sure end date later than start date
     validate(
-      need(input$qpcrDateRange[2] > input$qpcrDateRange[1], "End date is earlier than start date"
+      need(
+        input$qpcrDateRange[2] > input$qpcrDateRange[1],
+        "End date is earlier than start date"
       )
     )
     
     
     # make sure end date later than start date
     validate(
-      need(input$qpcrDateRange[2] <= maxDate_qpcr, "Date is not available, please select Date Range based on the available sample collection dates below."),
-      need(input$qpcrDateRange[1] >= minDate_qpcr, "Date is not available, please select Date Range based on the available sample collection dates below." )
+      need(
+        input$qpcrDateRange[2] <= maxDate_qpcr,
+        "Date is not available, please select Date Range based on the available sample collection dates below."
+      ),
+      need(
+        input$qpcrDateRange[1] >= minDate_qpcr,
+        "Date is not available, please select Date Range based on the available sample collection dates below."
+      )
     )
-    # 
+    #
     # # make sure end date later than start date
     # validate(
     #   need(input$cdsDateRange[2] %in% as.Date(major_path_expand_dt$Week), "Date is not available, please select Date Range based on the available sample collection dates below.")
-    #   
+    #
     # )
     
-    paste("Your date range is", 
-          difftime(input$qpcrDateRange[2], input$qpcrDateRange[1], units="days"),
-          "days")
+    paste(
+      "Your date range is",
+      difftime(input$qpcrDateRange[2], input$qpcrDateRange[1], units =
+                 "days"),
+      "days"
+    )
   })
   
   ##### BEGINING OF LEAFLET MAP SET UP #####
@@ -60,85 +76,108 @@ server <- function(input, output, session) {
   output$map <- renderLeaflet({
     leaflet() %>%
       addTiles() %>%
-      setView(lng = -99.56666, lat = 31, zoom = 8)
+      setView(lng = -99.56666,
+              lat = 31,
+              zoom = 8)
   })
   
   observeEvent(input$countySelect, {
     if (input$countySelect == "None") {
-      
       temp_filtered_data = merged_CountyWWTP %>%
         filter(!is.na(totalWWTP))
-      # labels <- sprintf(paste0("<strong> ", "County" , " : %s </strong> <br/> Population: %s <br/> Adjusted screening rates: %s"), 
+      # labels <- sprintf(paste0("<strong> ", "County" , " : %s </strong> <br/> Population: %s <br/> Adjusted screening rates: %s"),
       #                   shp$GEOID, shp$npop, round(shp@data[,3]) ) %>% lapply(htmltools::HTML)
-      labels <- paste("<strong>",temp_filtered_data$NAMELSAD, 
-                      "</strong><br>Numbers of Participating Site:",temp_filtered_data$totalWWTP) %>%
+      labels <- paste(
+        "<strong>",
+        temp_filtered_data$NAMELSAD,
+        "</strong><br>Numbers of Participating Site:",
+        temp_filtered_data$totalWWTP
+      ) %>%
         lapply(htmltools::HTML)
-      central_view <- c(min(merged_CountyWWTP$totalWWTP), max(merged_CountyWWTP$totalWWTP))
+      central_view <-
+        c(min(merged_CountyWWTP$totalWWTP),
+          max(merged_CountyWWTP$totalWWTP))
       leafletProxy("map") %>%
         clearControls() %>%
         clearMarkers() %>%
         clearPopups() %>%
         # Add Texas state boundary
-        addPolygons(data = texas_boundary,
-                    color = "#000000",
-                    weight = 3,
-                    fill = FALSE) %>%
-        addPolygons(data = merged_CountyWWTP %>%
-                      filter(is.na(totalWWTP)), fillColor = ~Color,
-                    fillOpacity = ~FillOpacity,
-                    color = "black",
-                    weight = ~Weight
-                    
+        addPolygons(
+          data = texas_boundary,
+          color = "#000000",
+          weight = 3,
+          fill = FALSE
         ) %>%
-        addPolygons(data = merged_CountyWWTP %>%
-                      filter(!is.na(totalWWTP)), 
-                    fillColor = ~Color,
-                    fillOpacity = ~FillOpacity,
-                    color = "black",
-                    weight = ~Weight,
-                    label = ~labels,
-                    labelOptions = labelOptions(noHide = FALSE,
-                                                direction = "center",
-                                                textsize = "12px",
-                                                style = list(
-                                                  "color" = "black",
-                                                  "font-family" = "serif",
-                                                  "font-style" = "bold",
-                                                  "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
-                                                  "font-size" = "12px",
-                                                  "border-color" = "rgba(0,0,0,0.5)"
-                                                )))%>%
-        setView(lng = -99.56666, lat = 31, zoom = 6)# %>%
+        addPolygons(
+          data = merged_CountyWWTP %>%
+            filter(is.na(totalWWTP)),
+          fillColor = ~ Color,
+          fillOpacity = ~ FillOpacity,
+          color = "black",
+          weight = ~ Weight
+          
+        ) %>%
+        addPolygons(
+          data = merged_CountyWWTP %>%
+            filter(!is.na(totalWWTP)),
+          fillColor = ~ Color,
+          fillOpacity = ~ FillOpacity,
+          color = "black",
+          weight = ~ Weight,
+          label = ~ labels,
+          labelOptions = labelOptions(
+            noHide = FALSE,
+            direction = "center",
+            textsize = "12px",
+            style = list(
+              "color" = "black",
+              "font-family" = "serif",
+              "font-style" = "bold",
+              "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
+              "font-size" = "12px",
+              "border-color" = "rgba(0,0,0,0.5)"
+            )
+          )
+        ) %>%
+        setView(lng = -99.56666,
+                lat = 31,
+                zoom = 6)# %>%
       
     } else {
-      
-      central_view <- c(min(county_data_shp$wwtp), max(county_data_shp$wwtp))
-      county_selected <- WWTP[which(WWTP$County == input$countySelect),]
+      central_view <-
+        c(min(county_data_shp$wwtp), max(county_data_shp$wwtp))
+      county_selected <-
+        WWTP[which(WWTP$County == input$countySelect), ]
       
       leafletProxy("map") %>%
         clearControls() %>%
         clearMarkers() %>%
         clearPopups() %>%
         addProviderTiles("CartoDB.Positron") %>%
-        setView(lng = unique(WWTP$county_centroid_lon[which(WWTP$County == input$countySelect)]),
-                lat = unique(WWTP$county_centroid_lat[which(WWTP$County == input$countySelect)]),
-                zoom = 9)  %>%
+        setView(
+          lng = unique(WWTP$county_centroid_lon[which(WWTP$County == input$countySelect)]),
+          lat = unique(WWTP$county_centroid_lat[which(WWTP$County == input$countySelect)]),
+          zoom = 9
+        )  %>%
         addMarkers(
           data = county_selected,
           lng = county_selected$lon,
           lat = county_selected$lat,
-          label = ~paste0(WWTP[-1],", ", City),
-          labelOptions = labelOptions(noHide = FALSE,
-                                      direction = "center",
-                                      textsize = "12px",
-                                      style = list(
-                                        "color" = "black",
-                                        "font-family" = "serif",
-                                        "font-style" = "bold",
-                                        "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
-                                        "font-size" = "12px",
-                                        "border-color" = "rgba(0,0,0,0.5)"
-                                      )))
+          label = ~ paste0(WWTP[-1], ", ", City),
+          labelOptions = labelOptions(
+            noHide = FALSE,
+            direction = "center",
+            textsize = "12px",
+            style = list(
+              "color" = "black",
+              "font-family" = "serif",
+              "font-style" = "bold",
+              "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
+              "font-size" = "12px",
+              "border-color" = "rgba(0,0,0,0.5)"
+            )
+          )
+        )
       
     }
   })
@@ -147,18 +186,19 @@ server <- function(input, output, session) {
   ##### END OF LEAFLET MAP SET UP #####
   
   
-  ##### BEGGINING OF CDS TAB SET UP ##### 
+  ##### BEGGINING OF CDS TAB SET UP #####
   
   # Define reactive values for storing the last selected value
   
-  cds_lastSelected <- reactiveValues(city_variant = unique(WWTP$City[-1])[1], 
-                                     variant_variant = unique(major_path_expand_dt$species)[1],
-                                     city_city = unique(WWTP$City[-1])[1],
-                                     variant_city = unique(major_path_expand_dt$species)[1]
-  )
+  cds_lastSelected <-
+    reactiveValues(
+      city_variant = unique(WWTP$City[-1])[1],
+      variant_variant = unique(major_path_expand_dt$species)[1],
+      city_city = unique(WWTP$City[-1])[1],
+      variant_city = unique(major_path_expand_dt$species)[1]
+    )
   
   output$cdsSelectionUI <- renderUI({
-    
     if (input$cdsViewType == 'variant') {
       # When viewing by variant, save the last selected location
       isolate({
@@ -166,42 +206,69 @@ server <- function(input, output, session) {
         cds_lastSelected$city_variant <- input$cdsCityInput_variant
       })
       # If a variant was previously selected, use that
-      cds_selectedCity_variant <- if (!is.null(cds_lastSelected$city_variant)) cds_lastSelected$city_variant else unique(WWTP$City[-1])[1]
-      cds_selectedVariant_variant <- if (!is.null(cds_lastSelected$variant_variant)) cds_lastSelected$variant_variant else unique(major_path_expand_dt$species)[1]
+      cds_selectedCity_variant <-
+        if (!is.null(cds_lastSelected$city_variant))
+          cds_lastSelected$city_variant
+      else
+        unique(WWTP$City[-1])[1]
+      cds_selectedVariant_variant <-
+        if (!is.null(cds_lastSelected$variant_variant))
+          cds_lastSelected$variant_variant
+      else
+        unique(major_path_expand_dt$species)[1]
       
       div(
-        selectInput("cdsVariantInput_variant", "Select Variant:",
-                    choices = unique(major_path_expand_dt$species),
-                    selected = cds_selectedVariant_variant),
+        selectInput(
+          "cdsVariantInput_variant",
+          "Select Variant:",
+          choices = unique(major_path_expand_dt$species),
+          selected = cds_selectedVariant_variant
+        ),
         
-        selectizeInput("cdsCityInput_variant", "Select City(s):",
-                       choices = unique(WWTP$City[-1]),
-                       multiple = TRUE,
-                       selected = cds_selectedCity_variant)
+        selectizeInput(
+          "cdsCityInput_variant",
+          "Select City(s):",
+          choices = unique(WWTP$City[-1]),
+          multiple = TRUE,
+          selected = cds_selectedCity_variant
+        )
       )
       
       
       
-    } else if  (input$cdsViewType == 'city') {
-      
+    } else if (input$cdsViewType == 'city') {
       # When viewing by variant, save the last selected location and variant
       isolate({
         cds_lastSelected$city_city <- input$cdsCityInput_city
         cds_lastSelected$variant_city <- input$cdsVariantInput_city
       })
       # If a city was previously selected, use that
-      cds_selectedCity_city <- if (!is.null(cds_lastSelected$city_city)) cds_lastSelected$city_city else unique(WWTP$City[-1])[1]
-      cds_selectedVariant_city <- if (!is.null(cds_lastSelected$variant_city)) cds_lastSelected$variant_city else unique(major_path_expand_dt$species)[1]
+      cds_selectedCity_city <-
+        if (!is.null(cds_lastSelected$city_city))
+          cds_lastSelected$city_city
+      else
+        unique(WWTP$City[-1])[1]
+      cds_selectedVariant_city <-
+        if (!is.null(cds_lastSelected$variant_city))
+          cds_lastSelected$variant_city
+      else
+        unique(major_path_expand_dt$species)[1]
       
       div(
-        selectInput("cdsCityInput_city", "Select City:",
-                    choices = unique(WWTP$City[-1]),
-                    selected = cds_selectedCity_city),
+        selectInput(
+          "cdsCityInput_city",
+          "Select City:",
+          choices = unique(WWTP$City[-1]),
+          selected = cds_selectedCity_city
+        ),
         
-        selectizeInput("cdsVariantInput_city", "Select Variant(s):",
-                       choices = unique(major_path_expand_dt$species),
-                       multiple = TRUE,
-                       selected = cds_selectedVariant_city)
+        selectizeInput(
+          "cdsVariantInput_city",
+          "Select Variant(s):",
+          choices = unique(major_path_expand_dt$species),
+          multiple = TRUE,
+          selected = cds_selectedVariant_city
+        )
         
       )
     }
@@ -212,32 +279,37 @@ server <- function(input, output, session) {
     req(input$cdsDateRange)
     
     dateFiltered_major_path_expand_dt <- major_path_expand_dt %>%
-      filter(Week >= input$cdsDateRange[1] & Week <= input$cdsDateRange[2])
+      filter(Week >= input$cdsDateRange[1] &
+               Week <= input$cdsDateRange[2])
     
     if (input$cdsViewType == 'city') {
       req(input$cdsCityInput_city, input$cdsVariantInput_city)  # Ensure these inputs are defined
       
       # Filter data based on location and variant inputs
-      df<- dateFiltered_major_path_expand_dt %>%
-        filter(City %in% input$cdsCityInput_city & species %in%  input$cdsVariantInput_city) %>%
+      df <- dateFiltered_major_path_expand_dt %>%
+        filter(City %in% input$cdsCityInput_city &
+                 species %in%  input$cdsVariantInput_city) %>%
         group_by(City, species) %>%
         filter(n_distinct(Week) >= 3) %>%
-        arrange(City,species, Week, moving_average) %>%
+        arrange(City, species, Week, moving_average) %>%
         drop_na() %>%
         ungroup()
       
       
       
-    } else if (input$cdsViewType == 'variant'){
-      
-      req(input$cdsCityInput_variant, input$cdsVariantInput_variant)  # Ensure these inputs are defined
+    } else if (input$cdsViewType == 'variant') {
+      req(input$cdsCityInput_variant,
+          input$cdsVariantInput_variant)  # Ensure these inputs are defined
       
       # Filter data based on location and variant inputs
-      df<- dateFiltered_major_path_expand_dt %>%
-        filter(City %in% input$cdsCityInput_variant & species %in% input$cdsVariantInput_variant) %>%
+      df <- dateFiltered_major_path_expand_dt %>%
+        filter(
+          City %in% input$cdsCityInput_variant &
+            species %in% input$cdsVariantInput_variant
+        ) %>%
         group_by(City, species) %>%
         filter(n_distinct(Week) >= 3) %>%
-        arrange(City,species, Week, moving_average) %>%
+        arrange(City, species, Week, moving_average) %>%
         drop_na() %>%
         ungroup()
       
@@ -253,7 +325,7 @@ server <- function(input, output, session) {
     
     if (input$cdsViewType == 'city') {
       # pal <- wes_palette("Darjeeling1",
-      # nrow(unique(cds_filtered_data()$species)), 
+      # nrow(unique(cds_filtered_data()$species)),
       # type = "continuous")
       plot <- cds_filtered_data() %>%
         ggplot(aes(x = Week, y = moving_average, color = species)) +
@@ -262,26 +334,40 @@ server <- function(input, output, session) {
         # scale_color_manual(values = pal) +
         scale_y_continuous(position = "right") +
         theme_bw() +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
-              axis.title.y = element_text(margin = margin(l = 5))) +
+        theme(
+          axis.text.x = element_text(
+            angle = 90,
+            vjust = 0.5,
+            hjust = 1
+          ),
+          axis.title.y = element_text(margin = margin(l = 5))
+        ) +
         labs(x = "Date", y = "")
       
       
-      if(input$cdsPlotToggle) {
-        plot <- plot + facet_wrap(vars(species), scales = "free_y") 
+      if (input$cdsPlotToggle) {
+        plot <- plot + facet_wrap(vars(species), scales = "free_y")
         
       } else {
-        plot <- plot 
+        plot <- plot
       }
       
-      ggplotly(plot, width = input$cdsPlotDimensions[1], height = input$cdsPlotDimensions[2]) %>%
-        layout(yaxis = list(title = list(
-          text ='City-wide abundance (RPKMF)                                          \n', 
-          xanchor = 'right', yanchor =  'center')))
+      ggplotly(
+        plot,
+        width = input$cdsPlotDimensions[1],
+        height = input$cdsPlotDimensions[2]
+      ) %>%
+        layout(yaxis = list(
+          title = list(
+            text = 'City-wide abundance (RPKMF)                                          \n',
+            xanchor = 'right',
+            yanchor =  'center'
+          )
+        ))
       
     } else if (input$cdsViewType == 'variant') {
       # pal <- wes_palette("Darjeeling1",
-      #                    nrow(unique(cds_filtered_data()$City)), 
+      #                    nrow(unique(cds_filtered_data()$City)),
       #                    type = "continuous")
       plot <- cds_filtered_data() %>%
         ggplot(aes(x = Week, y = moving_average, color = City)) +
@@ -290,25 +376,34 @@ server <- function(input, output, session) {
         # scale_color_manual(values = pal) +
         scale_y_continuous(position = "right") +
         theme_bw() +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
-              axis.title.y = element_text(margin = margin(l = 5)))
+        theme(
+          axis.text.x = element_text(
+            angle = 90,
+            vjust = 0.5,
+            hjust = 1
+          ),
+          axis.title.y = element_text(margin = margin(l = 5))
+        )
       
-      if(input$cdsPlotToggle) {
-        plot <- plot + facet_wrap(vars(City), scales = "free_y") 
+      if (input$cdsPlotToggle) {
+        plot <- plot + facet_wrap(vars(City), scales = "free_y")
         
       } else {
-        plot <- plot 
+        plot <- plot
       }
       
-      ggplotly(plot, width = input$cdsPlotDimensions[1], height = input$cdsPlotDimensions[2]) %>%
-        layout(
-          yaxis = list(
-            title = list(
-              text = 'City-wide abundance (RPKMF)                                          \n', 
-              xanchor = 'right', yanchor =  'center'
-            )
+      ggplotly(
+        plot,
+        width = input$cdsPlotDimensions[1],
+        height = input$cdsPlotDimensions[2]
+      ) %>%
+        layout(yaxis = list(
+          title = list(
+            text = 'City-wide abundance (RPKMF)                                          \n',
+            xanchor = 'right',
+            yanchor =  'center'
           )
-        )
+        ))
       
       
     }
@@ -319,62 +414,92 @@ server <- function(input, output, session) {
   
   #### END OF SETTING UP CDS_TRENDPLOT ###
   
-  ##### END OF CDS TAB SET UP ##### 
+  ##### END OF CDS TAB SET UP #####
   
   #### BEGINNING OF QPCR SELECTION UI ####
   
-  qpcr_lastSelected <- reactiveValues(city_variant =gsub(",.*$", "", unique(qPCR_ma_p$City))[1], 
-                                      variant_variant = unique(qPCR_ma_p$Target)[1],
-                                      city_city = gsub(",.*$", "", unique(qPCR_ma_p$City))[1],
-                                      variant_city = unique(qPCR_ma_p$Target)[1]
-  )
+  qpcr_lastSelected <-
+    reactiveValues(
+      city_variant = gsub(",.*$", "", unique(qPCR_ma_p$City))[1],
+      variant_variant = unique(qPCR_ma_p$Target)[1],
+      city_city = gsub(",.*$", "", unique(qPCR_ma_p$City))[1],
+      variant_city = unique(qPCR_ma_p$Target)[1]
+    )
   
   
   output$qpcrSelectionUI <- renderUI({
-    
     if (input$qpcrViewType == 'variant') {
       # When viewing by variant, save the last selected location
       isolate({
         qpcr_lastSelected$variant_variant <- input$qpcrVariantInput_variant
-        qpcr_lastSelected$city_variant <- input$qpcrCityInput_variant
+        qpcr_lastSelected$city_variant <-
+          input$qpcrCityInput_variant
       })
       # If a variant was previously selected, use that
-      qpcr_selectedCity_variant <- if (!is.null(qpcr_lastSelected$city_variant)) qpcr_lastSelected$city_variant else gsub(",.*$", "", unique(qPCR_ma_p$City))[1]
-      qpcr_selectedVariant_variant <- if (!is.null(qpcr_lastSelected$variant_variant)) qpcr_lastSelected$variant_variant else unique(qPCR_ma_p$Target)[1]
+      qpcr_selectedCity_variant <-
+        if (!is.null(qpcr_lastSelected$city_variant))
+          qpcr_lastSelected$city_variant
+      else
+        gsub(",.*$", "", unique(qPCR_ma_p$City))[1]
+      qpcr_selectedVariant_variant <-
+        if (!is.null(qpcr_lastSelected$variant_variant))
+          qpcr_lastSelected$variant_variant
+      else
+        unique(qPCR_ma_p$Target)[1]
       
       div(
-        selectInput("qpcrVariantInput_variant", "Select Variant:",
-                    choices = unique(qPCR_ma_p$Target),
-                    selected = qpcr_selectedVariant_variant),
+        selectInput(
+          "qpcrVariantInput_variant",
+          "Select Variant:",
+          choices = unique(qPCR_ma_p$Target),
+          selected = qpcr_selectedVariant_variant
+        ),
         
-        selectizeInput("qpcrCityInput_variant", "Select City(s):",
-                       choices = gsub(",.*$", "", unique(qPCR_ma_p$City)),
-                       multiple = TRUE,
-                       selected = qpcr_selectedCity_variant)
+        selectizeInput(
+          "qpcrCityInput_variant",
+          "Select City(s):",
+          choices = gsub(",.*$", "", unique(qPCR_ma_p$City)),
+          multiple = TRUE,
+          selected = qpcr_selectedCity_variant
+        )
       )
       
       
       
-    } else if  (input$qpcrViewType == 'city') {
-      
+    } else if (input$qpcrViewType == 'city') {
       # When viewing by variant, save the last selected location and variant
       isolate({
         qpcr_lastSelected$city_city <- input$qpcrCityInput_city
-        qpcr_lastSelected$variant_city <- input$qpcrVariantInput_city
+        qpcr_lastSelected$variant_city <-
+          input$qpcrVariantInput_city
       })
       # If a city was previously selected, use that
-      qpcr_selectedCity_city <- if (!is.null(qpcr_lastSelected$city_city)) qpcr_lastSelected$city_city else gsub(",.*$", "", unique(qPCR_ma_p$City))[1]
-      qpcr_selectedVariant_city <- if (!is.null(qpcr_lastSelected$variant_city)) qpcr_lastSelected$variant_city else unique(qPCR_ma_p$Target)[1]
+      qpcr_selectedCity_city <-
+        if (!is.null(qpcr_lastSelected$city_city))
+          qpcr_lastSelected$city_city
+      else
+        gsub(",.*$", "", unique(qPCR_ma_p$City))[1]
+      qpcr_selectedVariant_city <-
+        if (!is.null(qpcr_lastSelected$variant_city))
+          qpcr_lastSelected$variant_city
+      else
+        unique(qPCR_ma_p$Target)[1]
       
       div(
-        selectInput("qpcrCityInput_city", "Select City:",
-                    choices = gsub(",.*$", "", unique(qPCR_ma_p$City)),
-                    selected = qpcr_selectedCity_city),
+        selectInput(
+          "qpcrCityInput_city",
+          "Select City:",
+          choices = gsub(",.*$", "", unique(qPCR_ma_p$City)),
+          selected = qpcr_selectedCity_city
+        ),
         
-        selectizeInput("qpcrVariantInput_city", "Select Variant(s):",
-                       choices = unique(qPCR_ma_p$Target),
-                       multiple = TRUE,
-                       selected = qpcr_selectedVariant_city)
+        selectizeInput(
+          "qpcrVariantInput_city",
+          "Select Variant(s):",
+          choices = unique(qPCR_ma_p$Target),
+          multiple = TRUE,
+          selected = qpcr_selectedVariant_city
+        )
         
       )
     }
@@ -388,27 +513,34 @@ server <- function(input, output, session) {
     req(input$qpcrDateRange)
     
     dateFiltered_qPCR_ma_p <- qPCR_ma_p %>%
-      filter(Week >= input$qpcrDateRange[1] & Week <= input$qpcrDateRange[2])
+      filter(Week >= input$qpcrDateRange[1] &
+               Week <= input$qpcrDateRange[2])
     
     if (input$qpcrViewType == 'city') {
       req(input$qpcrCityInput_city, input$qpcrVariantInput_city)  # Ensure these inputs are defined
       
       # Filter data based on location and variant inputs
-      df<- dateFiltered_qPCR_ma_p %>%
-        filter(gsub(",.*$", "", City) %in% input$qpcrCityInput_city & Target %in%  input$qpcrVariantInput_city) %>%
+      df <- dateFiltered_qPCR_ma_p %>%
+        filter(
+          gsub(",.*$", "", City) %in% input$qpcrCityInput_city &
+            Target %in%  input$qpcrVariantInput_city
+        ) %>%
         filter(n_distinct(Week) >= 3) %>%
         drop_na() %>%
         ungroup()
       
       
       
-    } else if (input$qpcrViewType == 'variant'){
-      
-      req(input$qpcrCityInput_variant, input$qpcrVariantInput_variant)  # Ensure these inputs are defined
+    } else if (input$qpcrViewType == 'variant') {
+      req(input$qpcrCityInput_variant,
+          input$qpcrVariantInput_variant)  # Ensure these inputs are defined
       
       # Filter data based on location and variant inputs
-      df<- dateFiltered_qPCR_ma_p %>%
-        filter(gsub(",.*$", "", City) %in% input$qpcrCityInput_variant & Target %in%  input$qpcrVariantInput_variant) %>%
+      df <- dateFiltered_qPCR_ma_p %>%
+        filter(
+          gsub(",.*$", "", City) %in% input$qpcrCityInput_variant &
+            Target %in%  input$qpcrVariantInput_variant
+        ) %>%
         filter(n_distinct(Week) >= 3) %>%
         drop_na() %>%
         ungroup()
@@ -424,7 +556,6 @@ server <- function(input, output, session) {
     
     
     if (input$qpcrViewType == 'city') {
-      
       qpcr_plot <- qpcr_filtered_data() %>%
         ggplot(aes(x = Week, y = moving_average, color = City)) +
         geom_line(size = 1, alpha = 0.9) +
@@ -434,11 +565,15 @@ server <- function(input, output, session) {
         #scale_color_manual(values =  wes_palette("Darjeeling1", length(unique(qpcr_filtered_data()$City)), type = "continuous")) +
         labs(x = "Date", y = "City-wide abundance (genome copies/sample)\n") +
         theme_bw() +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+        theme(axis.text.x = element_text(
+          angle = 90,
+          vjust = 0.5,
+          hjust = 1
+        ))
       
       
       
-      if(input$qpcrPlotToggle) {
+      if (input$qpcrPlotToggle) {
         qpcr_plot <- qpcr_plot + facet_wrap(vars(Target),
                                             scales = "free_y")
         
@@ -447,13 +582,20 @@ server <- function(input, output, session) {
         qpcr_plot <- qpcr_plot
       }
       
-      ggplotly(qpcr_plot, width = input$qpcr_plot_dimension[1], height = input$qpcr_plot_dimension[2]) %>%
-        layout(yaxis = list(title = list(
-          text ='City-wide abundance (genome copies/sample)                                          \n',
-          xanchor = 'right', yanchor =  'center')))
+      ggplotly(
+        qpcr_plot,
+        width = input$qpcr_plot_dimension[1],
+        height = input$qpcr_plot_dimension[2]
+      ) %>%
+        layout(yaxis = list(
+          title = list(
+            text = 'City-wide abundance (genome copies/sample)                                          \n',
+            xanchor = 'right',
+            yanchor =  'center'
+          )
+        ))
       
     } else if (input$qpcrViewType == 'variant') {
-      
       qpcr_plot <- qpcr_filtered_data() %>%
         ggplot(aes(x = Week, y = moving_average, color = City)) +
         geom_line(size = 1, alpha = 0.9) +
@@ -463,11 +605,15 @@ server <- function(input, output, session) {
         #scale_color_manual(values =  wes_palette("Darjeeling1", length(unique(qpcr_filtered_data()$City)), type = "continuous")) +
         labs(x = "Date", y = "City-wide abundance (genome copies/sample)\n") +
         theme_bw() +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+        theme(axis.text.x = element_text(
+          angle = 90,
+          vjust = 0.5,
+          hjust = 1
+        ))
       
       
       
-      if(input$qpcrPlotToggle) {
+      if (input$qpcrPlotToggle) {
         qpcr_plot <- qpcr_plot + facet_wrap(vars(City),
                                             scales = "free_y")
         
@@ -475,10 +621,18 @@ server <- function(input, output, session) {
         qpcr_plot <- qpcr_plot
       }
       
-      ggplotly(qpcr_plot, width = input$qpcr_plot_dimension[1], height = input$qpcr_plot_dimension[2]) %>%
-        layout(yaxis = list(title = list(
-          text ='City-wide abundance (genome copies/sample)                                          \n',
-          xanchor = 'right', yanchor =  'center')))
+      ggplotly(
+        qpcr_plot,
+        width = input$qpcr_plot_dimension[1],
+        height = input$qpcr_plot_dimension[2]
+      ) %>%
+        layout(yaxis = list(
+          title = list(
+            text = 'City-wide abundance (genome copies/sample)                                          \n',
+            xanchor = 'right',
+            yanchor =  'center'
+          )
+        ))
       
     }
     
@@ -493,58 +647,88 @@ server <- function(input, output, session) {
     summarize(detectedStrains = n_distinct(strain))
   
   number_of_sites <- length(unique(comb_metadata_table$Site))
-  pal <- wes_palette("FantasticFox1", number_of_sites, type = "continuous")
+  pal <-
+    wes_palette("FantasticFox1", number_of_sites, type = "continuous")
   
   
   output$collectionDatesPlot_cds <- renderPlotly({
-    
     calendarp <- merge(comb_metadata_table, strains_per_sample_dt,
                        by = "sample_ID") %>%
       mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
-      filter(gsub(",.*$", "", City) %in% input$cdsCity_collectiondate ) %>%
+      filter(gsub(",.*$", "", City) %in% input$cdsCity_collectiondate) %>%
       select(c(City, Site, Week, sample_ID, detectedStrains)) %>%
       distinct()
     
     plot <- ggplot(calendarp,
-                   aes(x = Week, y = Site, color = Site, size = detectedStrains)) +
+                   aes(
+                     x = Week,
+                     y = Site,
+                     color = Site,
+                     size = detectedStrains
+                   )) +
       geom_point() +
       geom_line(size = 0.25, na.rm = T) +
-      scale_size_continuous(range = c(0.2,3.5)) +
-      facet_wrap(City~., ncol = 1, scales = "free_y") +
+      scale_size_continuous(range = c(0.2, 3.5)) +
+      facet_wrap(City ~ ., ncol = 1, scales = "free_y") +
       scale_color_manual(values = pal) +
       scale_x_date(date_breaks = "months", date_labels = "%b %Y") +
-      scale_y_discrete(labels = function(x) str_trunc(x, width = 14)) +
+      scale_y_discrete(
+        labels = function(x)
+          str_trunc(x, width = 14)
+      ) +
       theme_pubclean() +
-      labs(x="",y="") +
-      theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust=1),
-            legend.position = "Off")
+      labs(x = "", y = "") +
+      theme(
+        axis.text.x = element_text(
+          angle = 0,
+          vjust = 0.5,
+          hjust = 1
+        ),
+        legend.position = "Off"
+      )
     
-    ggplotly(plot, width = input$collectionDatesPlot_cds_dimension[1], height = input$collectionDatesPlot_cds_dimension[2])
+    ggplotly(
+      plot,
+      width = input$collectionDatesPlot_cds_dimension[1],
+      height = input$collectionDatesPlot_cds_dimension[2]
+    )
     
   })
   
   output$cdsInteractiveTable <- renderReactable({
     trend_major_path_dt %>%
-      select(c(City, Week, most_recent_week, species, difference, Interpretation, moving_average)) %>%
+      select(
+        c(
+          City,
+          Week,
+          most_recent_week,
+          species,
+          difference,
+          Interpretation,
+          moving_average
+        )
+      ) %>%
       filter(Week == most_recent_week) %>%
       distinct() %>%
-      mutate(interpretation_color = case_when(
-        Interpretation == "Increase from Baseline" ~ "orangered",
-        Interpretation == "Decrease from Baseline" ~ "cadetblue",
-        Interpretation == "Little Change" ~ "grey60",
-        Interpretation == "Constant at 0" ~ "white",
-        Interpretation == "(Re)-emerging from 0" ~ "purple",
-        Interpretation == "Going to 0" ~ "blue",
-        TRUE ~ "black"
-      ),
-      difference = case_when(
-        #difference == "-Inf" ~ 0,
-        difference == "NaN" ~ 0,
-        Interpretation == "Going to 0" ~ -1,
-        Interpretation == "(Re)-emerging from 0" ~ 1,
-        TRUE ~ difference
-      ),
-      difference = difference * 100) %>%
+      mutate(
+        interpretation_color = case_when(
+          Interpretation == "Increase from Baseline" ~ "orangered",
+          Interpretation == "Decrease from Baseline" ~ "cadetblue",
+          Interpretation == "Little Change" ~ "grey60",
+          Interpretation == "Constant at 0" ~ "white",
+          Interpretation == "(Re)-emerging from 0" ~ "purple",
+          Interpretation == "Going to 0" ~ "blue",
+          TRUE ~ "black"
+        ),
+        difference = case_when(
+          #difference == "-Inf" ~ 0,
+          difference == "NaN" ~ 0,
+          Interpretation == "Going to 0" ~ -1,
+          Interpretation == "(Re)-emerging from 0" ~ 1,
+          TRUE ~ difference
+        ),
+        difference = difference * 100
+      ) %>%
       arrange(desc(difference)) %>%
       reactable(
         .,
@@ -559,7 +743,8 @@ server <- function(input, output, session) {
             minWidth = 200,
             cell = data_bars(
               data = .,
-              fill_color = c(mako(8), rev(magma(8))),  #viridis(length(trend_major_path_dt$difference), option = c("A", "B")),
+              fill_color = c(mako(8), rev(magma(8))),
+              #viridis(length(trend_major_path_dt$difference), option = c("A", "B")),
               background = '#F1F1F1',
               round_edges = F,
               text_position = 'outside-end',
@@ -568,22 +753,24 @@ server <- function(input, output, session) {
           ),
           moving_average = colDef(
             name = "Abundance (moving average)",
-            width = 100, 
-            style = color_scales(., colors = c("grey", "gold", "maroon"), bias = 10), 
+            width = 100,
+            style = color_scales(
+              .,
+              colors = c("grey", "gold", "maroon"),
+              bias = 10
+            ),
             format = colFormat(digits = 2)
           ),
           Interpretation = colDef(
-            minWidth = 100, 
+            minWidth = 100,
             style = color_scales(., color_ref = "interpretation_color")
           ),
-          species = colDef(
-            minWidth = 100
-          ),
-          Week = colDef(
-            name = "Most Recent Week"),
+          species = colDef(minWidth = 100),
+          Week = colDef(name = "Most Recent Week"),
           interpretation_color = colDef(show = FALSE),
           most_recent_week = colDef(show = FALSE)
-        )) %>% 
+        )
+      ) %>%
       google_font(font_family = "Oswald") %>%
       suppressWarnings()
     
@@ -618,8 +805,12 @@ server <- function(input, output, session) {
             )
           ),
           RPKM = colDef(
-            width = 70, 
-            style = color_scales(., colors = c("grey", "gold", "maroon"), bias = 10), 
+            width = 70,
+            style = color_scales(
+              .,
+              colors = c("grey", "gold", "maroon"),
+              bias = 10
+            ),
             format = colFormat(digits = 2)
           ),
           coverage = colDef(
@@ -639,33 +830,61 @@ server <- function(input, output, session) {
               statline_color = "black"
               #bandline = "innerquartiles",
               #bandline_color = "darkgreen"
-            )),
-          sequence_name = colDef(
-            width = 150),
-          sample_ID = colDef(
-            width = 70,
-            name = "Sample"),
-          reference_length = colDef(
-            width = 80,
-            name = "Reference Length")
-        )) %>% 
+            )
+          ),
+          sequence_name = colDef(width = 150),
+          sample_ID = colDef(width = 70,
+                             name = "Sample"),
+          reference_length = colDef(width = 80,
+                                    name = "Reference Length")
+        )
+      ) %>%
       google_font(font_family = "Oswald") %>%
       suppressWarnings()
     
   })
   
   output$qpcr_ElPaso_reactivePlot <- renderPlotly({
-    
     # Subset the data based on user's selection
-    subset_ElPaso_data <- subset(ElPaso_data, WWTP == input$WWTP_input)
-    subset_ElPaso_caserate_data <- subset(ElPaso_caserate_data, WWTP == input$WWTP_input)
+    subset_ElPaso_data <-
+      subset(ElPaso_data, WWTP == input$WWTP_input)
+    subset_ElPaso_caserate_data <-
+      subset(ElPaso_caserate_data, WWTP == input$WWTP_input)
     
     # Generate the plot
     p <- ggplot() +
-      geom_line(data = subset_ElPaso_data, aes(x = Date, y = scaled_avg_copies_per_ml, color = "Wastewater Concentration", linetype = "Wastewater Concentration")) +
-      geom_line(data = subset_ElPaso_caserate_data, aes(x = Date, y = scaled_case_rate, color = "Case Rate", linetype = "Case Rate")) +
-      scale_color_manual(values = c("Wastewater Concentration" = "blue", "Case Rate" = "red"), name = "Data Type", breaks = c("Wastewater Concentration", "Case Rate")) +
-      scale_linetype_manual(values = c("Wastewater Concentration" = "solid", "Case Rate" = "dashed"), name = "Data Type", breaks = c("Wastewater Concentration", "Case Rate")) +
+      geom_line(
+        data = subset_ElPaso_data,
+        aes(
+          x = Date,
+          y = scaled_avg_copies_per_ml,
+          color = "Wastewater Concentration",
+          linetype = "Wastewater Concentration"
+        )
+      ) +
+      geom_line(data = subset_ElPaso_caserate_data,
+                aes(
+                  x = Date,
+                  y = scaled_case_rate,
+                  color = "Case Rate",
+                  linetype = "Case Rate"
+                )) +
+      scale_color_manual(
+        values = c(
+          "Wastewater Concentration" = "blue",
+          "Case Rate" = "red"
+        ),
+        name = "Data Type",
+        breaks = c("Wastewater Concentration", "Case Rate")
+      ) +
+      scale_linetype_manual(
+        values = c(
+          "Wastewater Concentration" = "solid",
+          "Case Rate" = "dashed"
+        ),
+        name = "Data Type",
+        breaks = c("Wastewater Concentration", "Case Rate")
+      ) +
       # scale_size_manual(values = c(1, 2), guide = "none") +
       
       labs(x = "Date", y = "Normalized Wastewater Concentration", title = "Trends in Wastewater Concentration and Case Rate") +
@@ -676,50 +895,107 @@ server <- function(input, output, session) {
     
     
     # If the checkbox is selected, add facet_wrap to the plot
-    if(input$wrap_plot) {
-      
+    if (input$wrap_plot) {
       p <-  ggplot() +
-        geom_line(data = ElPaso_data, aes(x = Date, y = scaled_avg_copies_per_ml, color = "Wastewater Concentration", linetype = "Wastewater Concentration")) +
-        geom_line(data = ElPaso_caserate_data, aes(x = Date, y = scaled_case_rate, color = "Case Rate", linetype = "Case Rate")) +
-        scale_color_manual(values = c("Wastewater Concentration" = "blue", "Case Rate" = "red"), name = "Data Type", breaks = c("Wastewater Concentration", "Case Rate")) +
-        scale_linetype_manual(values = c("Wastewater Concentration" = "solid", "Case Rate" = "dashed"), name = "Data Type", breaks = c("Wastewater Concentration", "Case Rate")) +
+        geom_line(
+          data = ElPaso_data,
+          aes(
+            x = Date,
+            y = scaled_avg_copies_per_ml,
+            color = "Wastewater Concentration",
+            linetype = "Wastewater Concentration"
+          )
+        ) +
+        geom_line(
+          data = ElPaso_caserate_data,
+          aes(
+            x = Date,
+            y = scaled_case_rate,
+            color = "Case Rate",
+            linetype = "Case Rate"
+          )
+        ) +
+        scale_color_manual(
+          values = c(
+            "Wastewater Concentration" = "blue",
+            "Case Rate" = "red"
+          ),
+          name = "Data Type",
+          breaks = c("Wastewater Concentration", "Case Rate")
+        ) +
+        scale_linetype_manual(
+          values = c(
+            "Wastewater Concentration" = "solid",
+            "Case Rate" = "dashed"
+          ),
+          name = "Data Type",
+          breaks = c("Wastewater Concentration", "Case Rate")
+        ) +
         labs(x = "Date", y = "Normalized Wastewater Concentration", title = "Trends in Wastewater Concentration and Case Rate") +
-        facet_wrap(~ WWTP, scales = "free_y") +
+        facet_wrap( ~ WWTP, scales = "free_y") +
         theme_minimal() +
         theme(legend.position = "bottom")
       
     }
     
-    ggplotly(p, width = input$qpcr_ElPaso_reactivePlot_dimension[1], height = input$qpcr_ElPaso_reactivePlot_dimension[2])
+    ggplotly(
+      p,
+      width = input$qpcr_ElPaso_reactivePlot_dimension[1],
+      height = input$qpcr_ElPaso_reactivePlot_dimension[2]
+    )
   })
   
   
   # new outputs for the plotly plots and animation
   
   output$city_tsnep <- renderPlotly({
-    pal <- wes_palette("Darjeeling1", WWTP_citieslength, type = "continuous")
+    pal <-
+      wes_palette("Darjeeling1", WWTP_citieslength, type = "continuous")
     
     city_tsnep <- embb_dt %>%
-      ggplot(aes(x=V1, y=V2, color=City, text = Date)) +
+      ggplot(aes(
+        x = V1,
+        y = V2,
+        color = City,
+        text = Date
+      )) +
       geom_point(size = 3, alpha = 0.8) +
       scale_color_manual(values = pal) +
       theme_bw() +
-      labs(x="t-SNE 1", y="t-SNE 2")
-    ggplotly(city_tsnep,  width = input$city_tsnep_dimension[1], height = input$city_tsnep_dimension[2],  tooltip = c("City", "Date"))
+      labs(x = "t-SNE 1", y = "t-SNE 2")
+    ggplotly(
+      city_tsnep,
+      width = input$city_tsnep_dimension[1],
+      height = input$city_tsnep_dimension[2],
+      tooltip = c("City", "Date")
+    )
   })
   
   
   output$date_tsnep <- renderPlotly({
-    
     date_tsnep <- embb_dt %>%
-      ggplot(aes(x=V1, y=V2, color=as.integer(Date), text = City_Date)) +
+      ggplot(aes(
+        x = V1,
+        y = V2,
+        color = as.integer(Date),
+        text = City_Date
+      )) +
       geom_point(size = 3, alpha = 0.8) +
-      scale_color_gradient(low = "#FDD262",
-                           high = "#3F3F7B", labels=as.Date_origin, name = "Date") +
+      scale_color_gradient(
+        low = "#FDD262",
+        high = "#3F3F7B",
+        labels = as.Date_origin,
+        name = "Date"
+      ) +
       theme_bw() +
-      labs(x="t-SNE 1", y="t-SNE 2")
+      labs(x = "t-SNE 1", y = "t-SNE 2")
     
-    ggplotly(date_tsnep, width = input$date_tsnep_dimension[1], height = input$date_tsnep_dimension[2],  tooltip = "City_Date")
+    ggplotly(
+      date_tsnep,
+      width = input$date_tsnep_dimension[1],
+      height = input$date_tsnep_dimension[2],
+      tooltip = "City_Date"
+    )
   })
   
   # # to include a gif animation in a Shiny app you might need to save the gif and then include it into the app
@@ -737,17 +1013,16 @@ server <- function(input, output, session) {
   
   #### VIRUS PLOT ###
   virus_df <- reactive({
-    df <- prevalent_sp_dt %>% 
-      filter(moving_average != "NA" & 
-               City %in% input$virusCity&
+    df <- prevalent_sp_dt %>%
+      filter(moving_average != "NA" &
+               City %in% input$virusCity &
                species %in% input$virus) %>%
       mutate(alabel = str_c(City, ", ", RPKMF, "\n", Week))
-      
+    
     df
   })
-      
+  
   output$virusPlot <- renderPlotly({
-
     virus_plot <- virus_df() %>%
       ggplot(aes(x = Week, y = moving_average, color = City)) +
       geom_line(size = 1, alpha = 0.9) +
@@ -756,21 +1031,30 @@ server <- function(input, output, session) {
       scale_y_continuous(labels = scales::comma) +
       labs(x = "Date", y = "City-wide abundance (RPKMF)") +
       theme_bw() +
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+      theme(axis.text.x = element_text(
+        angle = 90,
+        vjust = 0.5,
+        hjust = 1
+      ))
     
     
     
-    if(input$virusPlotToggle) {
+    if (input$virusPlotToggle) {
       virus_plot <- virus_plot + facet_wrap(vars(City),
-                                          scales = "free_y")
+                                            scales = "free_y")
       
     } else {
       virus_plot <- virus_plot
     }
     
-    ggplotly(virus_plot, width = input$virusPlot_dimension[1], height = input$virusPlot_dimension[2]) %>%
+    ggplotly(
+      virus_plot,
+      width = input$virusPlot_dimension[1],
+      height = input$virusPlot_dimension[2]
+    ) %>%
       layout(
-        xaxis = list(title = 'Date'), yaxis = list(title = 'City-Wide Abundance (RPKMF)')
+        xaxis = list(title = 'Date'),
+        yaxis = list(title = 'City-Wide Abundance (RPKMF)')
       )
     
   })
