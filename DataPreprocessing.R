@@ -117,7 +117,7 @@ county_data_shp$wwtp <- ifelse(county_data_shp$NAMELSAD == "Harris County", 9,
 ### taxonomical profiles
 ## list of relevant files in the directory
 tax_files <- list.files(sprintf(
-  "%s/data2/taxonomical_profiles", 
+  "%s/Data/taxonomical_profiles", 
   find_rstudio_root_file()), 
   pattern = "*.tax.tsv", full.names = TRUE)
 
@@ -127,7 +127,7 @@ comb_tax_table <- rbindlist(lapply(tax_files, fread))
 ### metadata
 ## list of relevant files in the directory
 metadata_files <- list.files(sprintf(
-  "%s/data2/metadata", 
+  "%s/Data/metadata", 
   find_rstudio_root_file()), 
   pattern = "*.xlsx", full.names = TRUE)
 
@@ -140,7 +140,7 @@ comb_metadata_table$Date <- as.Date(comb_metadata_table$Date)
 
 ### codes
 ## replace real site names with codes 
-code_dt <- read_excel(sprintf("%s/data2/site_coding/WWTP_codes1.xlsx", find_rstudio_root_file()))
+code_dt <- read_excel(sprintf("%s/Data/site_coding/WWTP_codes1.xlsx", find_rstudio_root_file()))
 
 
 
@@ -156,7 +156,7 @@ comb_metadata_table <- comb_metadata_table %>%
 ### genome coverage
 ## list of relevant files in the directory
 coverage_files <- list.files(sprintf(
-  "%s/data2/genome_coverage", 
+  "%s/Data/genome_coverage", 
   find_rstudio_root_file()), 
   pattern = "*.mean_cov.tsv", full.names = TRUE)
 
@@ -172,7 +172,7 @@ comb_coverage_table <- rbindlist(
 
 ## list of relevant files in the directory
 qPCR_files <- list.files(sprintf(
-  "%s/data2/qPCR", 
+  "%s/Data/qPCR", 
   find_rstudio_root_file()), 
   pattern = "*.csv", full.names = TRUE)
 #qPCR_files
@@ -185,7 +185,7 @@ comb_qPCR_table$date_of_collection <- as.POSIXct(comb_qPCR_table$date_of_collect
 
 
 ## load abbreviations -> sites/cities table
-abbr_dt <- read_excel(sprintf("%s/data2/site_coding/Sites_and_abbreviations.xlsx", find_rstudio_root_file()))
+abbr_dt <- read_excel(sprintf("%s/Data/site_coding/Sites_and_abbreviations.xlsx", find_rstudio_root_file()))
 
 # fix all the formatting, average genome copies
 
@@ -219,7 +219,7 @@ WWTP_cities <- gsub(", TX", "", WWTP_cities[[1]])
 
 invisible(capture.output(
   cities <- st_read(sprintf(
-    "%s/data2/geographical_files/Texas_Cities/City.shp", 
+    "%s/Data/geographical_files/Texas_Cities/City.shp", 
     find_rstudio_root_file())) %>% 
     filter(CITY_NM %in% WWTP_cities)%>% 
     st_cast("POINT") %>% as("Spatial") 
