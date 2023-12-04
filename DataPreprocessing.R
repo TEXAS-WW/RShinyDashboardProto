@@ -624,7 +624,7 @@ anim_date_tsnep <- embb_dt %>%
   geom_point(size = 3, alpha = 0.8) +
   geom_path(linewidth = 1.1, alpha = 0.8) +
   scale_color_gradient(low = "#FDD262",
-                       high = "#3F3F7B", labels=as.Date_origin, name = "Date") +
+                       high = "#3F3F7B") +
   theme_bw() +
   facet_wrap(~City) +
   labs(x="t-SNE 1", y="t-SNE 2") +
