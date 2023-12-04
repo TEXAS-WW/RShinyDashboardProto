@@ -83,10 +83,13 @@ server <- function(input, output, session) {
   
   observeEvent(input$countySelect, {
     if (input$countySelect == "None") {
+      
       temp_filtered_data = merged_CountyWWTP %>%
         filter(!is.na(totalWWTP))
+      
       # labels <- sprintf(paste0("<strong> ", "County" , " : %s </strong> <br/> Population: %s <br/> Adjusted screening rates: %s"),
       #                   shp$GEOID, shp$npop, round(shp@data[,3]) ) %>% lapply(htmltools::HTML)
+      
       labels <- paste(
         "<strong>",
         temp_filtered_data$NAMELSAD,
@@ -94,9 +97,11 @@ server <- function(input, output, session) {
         temp_filtered_data$totalWWTP
       ) %>%
         lapply(htmltools::HTML)
+      
       central_view <-
         c(min(merged_CountyWWTP$totalWWTP),
           max(merged_CountyWWTP$totalWWTP))
+      
       leafletProxy("map") %>%
         clearControls() %>%
         clearMarkers() %>%
@@ -145,7 +150,8 @@ server <- function(input, output, session) {
       
     } else {
       central_view <-
-        c(min(county_data_shp$wwtp), max(county_data_shp$wwtp))
+       # c(min(county_data_shp$wwtp), max(county_data_shp$wwtp))
+        c(min(merged_CountyWWTP$totalWWTP), max(merged_CountyWWTP$totalWWTP))
       county_selected <-
         WWTP[which(WWTP$County == input$countySelect), ]
       
@@ -804,7 +810,7 @@ server <- function(input, output, session) {
               number_fmt = scales::percent
             )
           ),
-          RPKM = colDef(
+          RPKMF = colDef(
             width = 70,
             style = color_scales(
               .,
@@ -946,6 +952,14 @@ server <- function(input, output, session) {
   })
   
   
+  
+  
+  
+  
+  
+  
+  #### ANIMATION
+  
   # new outputs for the plotly plots and animation
   
   output$city_tsnep <- renderPlotly({
@@ -1008,8 +1022,45 @@ server <- function(input, output, session) {
     tags$img(src = image_src)  # include the gif into the app
   })
   #####################
+
+
+  # 
+  # p <- prevalent_sp_dt %>%
+  #   filter(moving_average != "NA") %>%
+  #   mutate(alabel = str_c(City, ", ", RPKMFS, "\n", Week)) %>%
+  #   plot_ly(
+  #     type = 'scatter', 
+  #     x = ~Week, 
+  #     y = ~moving_average,
+  #     color = ~City,
+  #     colors = pal[1:length(pal)],
+  #     text = ~alabel,
+  #     hoverinfo = 'text',
+  #     mode = 'lines',
+  #     alpha = 0.9,
+  #     line = list(width = 3),
+  #     width = 1000, 
+  #     height = 500,
+  #     transforms = list(
+  #       list(
+  #         type = 'filter',
+  #         target = ~species,
+  #         operation = '=',
+  #         value = unique(prevalent_sp_dt$species)[1]
+  #       )
+  #     )) %>% layout(
+  #       updatemenus = get_menu_list(unique(prevalent_sp_dt$species)),
+  #       xaxis = list(title = 'Date'), yaxis = list(title = 'City-Wide Abundance (RPKMF)')
+  #       
+  #     )
+  # 
+  # 
+  # 
   
-  #-# Calculate tSNE
+
+  
+  
+  
   
   #### VIRUS PLOT ###
   virus_df <- reactive({
@@ -1017,7 +1068,7 @@ server <- function(input, output, session) {
       filter(moving_average != "NA" &
                City %in% input$virusCity &
                species %in% input$virus) %>%
-      mutate(alabel = str_c(City, ", ", RPKMF, "\n", Week))
+      mutate(alabel = str_c(City, ", ", RPKMFS, "\n", Week))
     
     df
   })

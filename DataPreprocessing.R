@@ -33,9 +33,9 @@ suppressPackageStartupMessages({
   library(RColorBrewer)
   library(gganimate)
   library(gifski)
-  library(shiny)
+  #library(shiny)
   library(shinydashboard)
-  library(shinyWidgets)
+ library(shinyWidgets)
   library(leaflet)
   library(dplyr)
   library(plotly)
@@ -65,8 +65,24 @@ ma <- function(x, n = 3){stats::filter(x, rep(1 / n, n), sides = 1)}
 
 # Read in data for WWTP Address and Centroid for Counties
 
+## list of relevant files in the directory
+WWTP_files <- list.files(sprintf(
+  "%s/Data/site_coding", 
+  find_rstudio_root_file()), 
+  pattern = "location.*\\.xlsx$", full.names = TRUE)
 
-WWTP <- read_excel("Data/WWTP/WWTP_location.xlsx")
+## load and combine all as one table
+WWTP <- rbindlist(lapply(WWTP_files, read_excel), fill= TRUE)
+colnames(WWTP) = c("State", "County", "City", "WWTP", "lat","lon","county_centroid_lat","county_centroid_lon","city_centroid_lat",
+                   "city_centroid_lon","Radius", "Color", "Weight", "FillOpacity"
+                   )
+
+### site_codes
+## replace real site names with codes 
+code_dt <- read_excel(sprintf("%s/Data/site_coding/WWTP_codes1.xlsx", find_rstudio_root_file()))
+
+## load abbreviations -> sites/cities table
+abbr_dt <- read_excel(sprintf("%s/Data/site_coding/Sites_and_abbreviations.xlsx", find_rstudio_root_file()))
 
 
 # Get state boundaries
@@ -77,14 +93,14 @@ texas_boundary <- us_states[us_states$STUSPS == "TX", ]
 
 
 CountyWWTP = WWTP[-1,] %>% 
-  group_by(County, county_centroid_lon, county_centroid_lat) %>% 
-  summarize(totalWWTP = n_distinct(WWTP))
+  group_by(County, county_centroid_lon, county_centroid_lat, Color, Radius, Weight, FillOpacity) %>% 
+  summarize(totalWWTP = n_distinct(WWTP)) 
 
 names(CountyWWTP)[1] = "NAMELSAD"
-CountyWWTP$Color = c("red","lightgreen","lightblue","orange","yellow","darkblue")
-CountyWWTP$Radius = c(12,16,20,8,8,8)
-CountyWWTP$Weight = rep(3,6)
-CountyWWTP$FillOpacity = rep(0.8,6)
+# CountyWWTP$Color = c("red","lightgreen","lightblue","orange","yellow","darkblue")
+# CountyWWTP$Radius = c(12,16,20,8,8,8)
+# CountyWWTP$Weight = rep(3,6)
+# CountyWWTP$FillOpacity = rep(0.8,6)
 
 
 county_data_shp <- tigris::counties(state = "TX", year=2021)
@@ -96,16 +112,17 @@ merged_CountyWWTP$Weight = replace(merged_CountyWWTP$Weight, is.na(merged_County
 merged_CountyWWTP$Radius = replace(merged_CountyWWTP$Radius, is.na(merged_CountyWWTP$Radius), 0)
 merged_CountyWWTP$FillOpacity = replace(merged_CountyWWTP$FillOpacity, is.na(merged_CountyWWTP$FillOpacity), 0)
 merged_CountyWWTP$Color = replace(merged_CountyWWTP$Color, is.na(merged_CountyWWTP$Color), "#F5DEB3")
+merged_CountyWWTP$totalWWTP = replace(merged_CountyWWTP$totalWWTP, is.na(merged_CountyWWTP$totalWWTP), 0)
 
-
-county_data_shp$wwtp = rep(0,length(county_data_shp$NAMELSAD))
-
-county_data_shp$wwtp <- ifelse(county_data_shp$NAMELSAD == "Harris County", 9,
-                                 ifelse(county_data_shp$NAMELSAD == "El Paso County", 4,
-                                        ifelse(county_data_shp$NAMELSAD == "Fort Bend County", 1,
-                                          ifelse(county_data_shp$NAMELSAD == "Cameron County", 2,
-                                                 ifelse(county_data_shp$NAMELSAD == "Lubbock County", 1,
-                                                        ifelse(county_data_shp$NAMELSAD == "Wichita County", 1, 0))))))
+# 
+# #county_data_shp$wwtp = rep(0,length(county_data_shp$NAMELSAD))
+# 
+# #county_data_shp$wwtp <- ifelse(county_data_shp$NAMELSAD == "Harris County", 9,
+#                                  ifelse(county_data_shp$NAMELSAD == "El Paso County", 4,
+#                                         ifelse(county_data_shp$NAMELSAD == "Fort Bend County", 1,
+#                                           ifelse(county_data_shp$NAMELSAD == "Cameron County", 2,
+#                                                  ifelse(county_data_shp$NAMELSAD == "Lubbock County", 1,
+#                                                         ifelse(county_data_shp$NAMELSAD == "Wichita County", 1, 0))))))
 
 
 
@@ -138,9 +155,6 @@ colnames(comb_metadata_table) = c("sample_ID", "Site", "City", "Date", "Flow", "
 
 comb_metadata_table$Date <- as.Date(comb_metadata_table$Date)
 
-### codes
-## replace real site names with codes 
-code_dt <- read_excel(sprintf("%s/Data/site_coding/WWTP_codes1.xlsx", find_rstudio_root_file()))
 
 
 
@@ -184,8 +198,7 @@ comb_qPCR_table <- rbindlist(lapply(qPCR_files, fread, colClasses = "character" 
 comb_qPCR_table$date_of_collection <- as.POSIXct(comb_qPCR_table$date_of_collection)
 
 
-## load abbreviations -> sites/cities table
-abbr_dt <- read_excel(sprintf("%s/Data/site_coding/Sites_and_abbreviations.xlsx", find_rstudio_root_file()))
+
 
 # fix all the formatting, average genome copies
 
@@ -225,24 +238,6 @@ invisible(capture.output(
     st_cast("POINT") %>% as("Spatial") 
 ))
 
-qPCR_ma_p <- comb_qPCR_table %>%
-  #filter(City != "other") %>%
-  filter(City != "other",
-         Target %in% c("SARSCOV2N1", "INFLUENZAA", "INFLUENZAB", 
-                       "NOROVIRUS", "MONKEYPOX")) %>%
-  mutate(Target = gsub("SARSCOV2N1", "SARS-CoV-2", Target),
-         Target = gsub("INFLUENZAA", "Influenza A virus", Target),
-         Target = gsub("INFLUENZAB", "Influenza B virus", Target),
-         Target = gsub("NOROVIRUS", "Norovirus GII", Target),
-         Target = gsub("MONKEYPOX", "Monkeypox virus", Target)) %>%
-  group_by(Week, City, Target) %>%
-  summarize(average_genome_copies_L = mean(average_genome_copies_L)) %>%
-  ungroup() %>%
-  group_by(City, Target) %>%
-  filter(n_distinct(Week) >= 3) %>%
-  arrange(City, Target, Week) %>%
-  mutate(moving_average = ma(average_genome_copies_L)) %>%
-  ungroup()
 
 
 
@@ -258,6 +253,8 @@ qPCR_cities_dt <- comb_qPCR_table %>%
   filter(City != "other") %>% 
   select(City) %>%
   unique()
+
+
 
 
 total_cities <- merge(virome_cities, qPCR_cities_dt, by = "City", all = T)
@@ -280,6 +277,53 @@ texas_sf <- st_as_sf(texas, coords = c("long", "lat"), crs = 4326)
 
 
 
+# qPCR (Targeted): Quantification of Specific Pathogens in Wastewater
+
+
+
+qPCR_ma_p <- comb_qPCR_table %>%
+  #filter(City != "other") %>%
+  filter(City != "other",
+         Target %in% c("SARSCOV2N1", "INFLUENZAA", "INFLUENZAB", 
+                       "NOROVIRUS", "MONKEYPOX")) %>%
+  mutate(Target = gsub("SARSCOV2N1", "SARS-CoV-2", Target),
+         Target = gsub("INFLUENZAA", "Influenza A virus", Target),
+         Target = gsub("INFLUENZAB", "Influenza B virus", Target),
+         Target = gsub("NOROVIRUS", "Norovirus GII", Target),
+         Target = gsub("MONKEYPOX", "Monkeypox virus", Target)) %>%
+  group_by(Week, City, Target) %>%
+  summarize(average_genome_copies_L = mean(average_genome_copies_L)) %>%
+  ungroup() %>%
+  group_by(City, Target) %>%
+  filter(n_distinct(Week) >= 3) %>%
+  arrange(City, Target, Week) %>%
+  mutate(moving_average = ma(average_genome_copies_L)) %>%
+  ungroup()
+
+
+
+
+## Collection Dates and Sites for all Comprehensive Deep Sequencing Samples
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#-# prepare table for major pathogen moving average plot
+
 major_path_met_dt <- merge(comb_tax_table, comb_metadata_table, 
                            by = "sample_ID") %>%
   mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
@@ -301,7 +345,35 @@ major_path_met_dt <- merge(comb_tax_table, comb_metadata_table,
   ungroup()
 
 
+
+
+
+
+
+# major_path_met_dt <- merge(comb_tax_table, comb_metadata_table, 
+#                            by = "sample_ID") %>%
+#   mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
+#   group_by(City) %>%
+#   filter(n_distinct(Week) >= 3) %>%
+#   ungroup() %>%
+#   filter(species %in% c("Norwalk virus", "Enterovirus D", "Rotavirus A", 
+#                         "Influenza A virus", 
+#                         "Severe acute respiratory syndrome-related coronavirus", 
+#                         "Monkeypox virus", "Respiratory syncytial virus",
+#                         "Human orthopneumovirus",
+#                         "Human mastadenovirus B", "Hepatovirus A", 
+#                         "Human respirovirus 1", "Human respirovirus 3")) %>%
+#   group_by(sample_ID, City, Week, species) %>%
+#   summarize(RPKMF = sum(RPKMF)) %>%
+#   ungroup() %>%
+#   group_by(species, City) %>%
+#   mutate(rel_ab = RPKMF/sum(RPKMF)) %>%
+#   ungroup()
+
+
 #-# Parse to expand but then only keep sampled dates
+
+
 
 city_dates <- comb_metadata_table %>%
   mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
@@ -330,6 +402,41 @@ major_path_expand_dt <- major_path_met_dt %>%
          species = gsub("Human orthopneumovirus", "Respiratory syncytial virus B", species))
 
 major_path_expand_dt <- merge(major_path_expand_dt, city_dates, by = c("City", "Week"))
+# 
+# 
+# 
+# 
+# city_dates <- comb_metadata_table %>%
+#   mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
+#   select(c(City, Week)) %>%
+#   distinct()
+# 
+# major_path_expand_dt <- major_path_met_dt %>%
+#   group_by(Week, City, species) %>%
+#   summarize(rel_ab = sum(rel_ab),
+#             RPKMF = mean(RPKMF)) %>%
+#   ungroup() %>%
+#   complete(Week, City, species, fill = list(rel_ab = 0, RPKMF = 0)) %>%
+#   group_by(City, species) %>%
+#   arrange(City, species, Week) %>%
+#   mutate(moving_average = ma(RPKMF)) %>%
+#   ungroup() %>%
+#   mutate(species = gsub("Enterovirus D", "Enterovirus D68", species),
+#          species = gsub("Norwalk virus", "Noroviruses", species),
+#          species = gsub("Severe acute respiratory syndrome-related coronavirus",
+#                         "SARS-CoV-2", species),
+#          species = gsub("Hepatovirus A", "Hepatitis A Virus", species),
+#          species = gsub("Human respirovirus 3", "Parainfluenza Virus 3", species),
+#          species = gsub("Human respirovirus 1", "Parainfluenza Virus 1", species),
+#          species = gsub("Human mastadenovirus B", "Human Adenovirus B", species),
+#          species = gsub("Respiratory syncytial virus", "Respiratory syncytial virus A", species),
+#          species = gsub("Human orthopneumovirus", "Respiratory syncytial virus B", species))
+# 
+# major_path_expand_dt <- merge(major_path_expand_dt, city_dates, by = c("City", "Week"))
+# 
+# 
+# 
+# 
 
 
 major_path_expand_dt$City = gsub(",.*$", "", major_path_expand_dt$City)
@@ -340,6 +447,8 @@ maxDate_cds <- as.Date(max(major_path_expand_dt$Week, na.rm = TRUE))
 
 minDate_qpcr<- as.Date(min(qPCR_ma_p$Week, na.rm = TRUE))
 maxDate_qpcr <- as.Date(max(qPCR_ma_p$Week, na.rm = TRUE))
+
+
 
 
 # DATA PREPARATION FOR INTERACTIVE TABLE
@@ -376,94 +485,6 @@ combined_react_data <- subset(combined_react_data, select = c("sample_ID", "Site
 combined_react_data$Percent_covered <- combined_react_data$covered_bases / combined_react_data$reference_length
 
 combined_react_data <- subset(combined_react_data, select = c("sample_ID", "Site", "City", "Date", "sequence_name", "accession", "reference_length", "Percent_covered", "RPKMF", "coverage"))
-
-#### ENDING PREPAPRING Data for ElPaso qPCR ####
-
-# Prepare data for tSNE
-
-comb_tax_table$RPKMF <- as.numeric(comb_tax_table$RPKMF)
-
-seqname_sID_wide_dt <- 
-  comb_tax_table %>% 
-  subset(select = c("sequence_name", "sample_ID", "RPKMF")) %>%
-  distinct(sequence_name, sample_ID, RPKMF) %>%
-  group_by(sequence_name, sample_ID) %>%
-  summarize(RPKMF = mean(RPKMF)) %>%
-  pivot_wider(names_from = sequence_name, values_from = RPKMF, values_fill = 0)
-
-sampleID_l <- seqname_sID_wide_dt$sample_ID
-
-seqname_sID_wide_dt <- seqname_sID_wide_dt %>% subset(select = -sample_ID)
-
-##
-tephi_prcomp1 <- prcomp(log10(seqname_sID_wide_dt+1))
-
-emb <- Rtsne::Rtsne(tephi_prcomp1$x[,1:10])
-
-embb <- emb$Y
-
-rownames(embb) <- sampleID_l
-
-embb_df <- as.data.frame(embb)
-
-embb_dt <- setDT(embb_df, keep.rownames = "sample_ID")
-
-embb_dt <- merge(embb_dt, comb_metadata_table, by ="sample_ID")
-
-#embb_dt$City_Site <- str_c(embb_dt$City, ", ", embb_dt$Site)
-
-embb_dt$Date <- as.Date(embb_dt$Date, "%m-%d-%Y")
-
-as.Date_origin <- function(x){
-  as.Date(x, origin = '1970-01-01')
-}
-
-embb_dt$City_Date <- str_c(embb_dt$City, ", ", embb_dt$Date)
-
-
-
-anim_date_tsnep <- embb_dt %>%
-  arrange(Date) %>%
-  ggplot(aes(x=V1, y=V2, color=as.integer(Date), group = Site)) +
-  geom_point(size = 3, alpha = 0.8) +
-  geom_path(linewidth = 1.1, alpha = 0.8) +
-  scale_color_gradient(low = "#FDD262",
-                       high = "#3F3F7B", labels=as.Date_origin, name = "Date") +
-  theme_bw() +
-  facet_wrap(~City) +
-  labs(x="t-SNE 1", y="t-SNE 2") +
-  transition_reveal(along = as.integer(Date)) 
-
-
-##### preparing data to make a pulldown to check any virus species
-
-species_abund_dt <- merge(comb_tax_table, comb_metadata_table, 
-                          by = "sample_ID") %>%
-  mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
-  group_by(City) %>%
-  filter(n_distinct(Week) >= 3) %>%
-  ungroup() %>%
-  group_by(Site, species, Week) %>%
-  summarize(RPKMS = sum(RPKMF),
-            City = first(City)) %>%
-  ungroup() %>%
-  group_by(City, species, Week) %>%
-  summarize(RPKMFS = mean(RPKMS)) %>%
-  ungroup() %>%
-  complete(nesting(Week, City), species, fill = list(RPKMFS=0)) %>%
-  group_by(City, species) %>%
-  arrange(City, species, Week) %>%
-  mutate(moving_average = ma(RPKMFS)) %>%
-  ungroup()
-
-
-prevalent_sp_dt <- merge(species_abund_dt, city_dates, by = c("City", "Week")) %>%
-  group_by(species) %>%
-  mutate(nonzero = sum(RPKMFS != 0)) %>%
-  filter(nonzero >=10) %>%
-  select(-nonzero) %>%
-  ungroup() %>%
-  arrange(City, species, Week)
 
 
 #### INTERACTIVE TABLE 
@@ -515,3 +536,180 @@ trend_major_path_dt %>%
   ),
   difference = difference * 100) %>%
   arrange(desc(difference))
+
+
+#-# Calculate tSNE
+
+comb_tax_table$RPKMF <- as.numeric(comb_tax_table$RPKMF)
+
+seqname_sID_wide_dt <- 
+  comb_tax_table %>% 
+  subset(select = c("sequence_name", "sample_ID", "RPKMF")) %>%
+  distinct(sequence_name, sample_ID, RPKMF) %>%
+  group_by(sequence_name, sample_ID) %>%
+  summarize(RPKMF = mean(RPKMF)) %>%
+  pivot_wider(names_from = sequence_name, values_from = RPKMF, values_fill = 0)
+
+sampleID_l <- seqname_sID_wide_dt$sample_ID
+
+seqname_sID_wide_dt <- seqname_sID_wide_dt %>% subset(select = -sample_ID)
+
+##
+tephi_prcomp1 <- prcomp(log10(seqname_sID_wide_dt+1))
+
+emb <- Rtsne::Rtsne(tephi_prcomp1$x[,1:10])
+
+embb <- emb$Y
+
+rownames(embb) <- sampleID_l
+
+embb_df <- as.data.frame(embb)
+
+embb_dt <- setDT(embb_df, keep.rownames = "sample_ID")
+
+embb_dt <- merge(embb_dt, comb_metadata_table, by ="sample_ID")
+
+#embb_dt$City_Site <- str_c(embb_dt$City, ", ", embb_dt$Site)
+
+embb_dt$Date <- as.Date(embb_dt$Date, "%m-%d-%Y")
+
+# 
+# # Prepare data for tSNE
+# 
+# comb_tax_table$RPKMF <- as.numeric(comb_tax_table$RPKMF)
+# 
+# seqname_sID_wide_dt <- 
+#   comb_tax_table %>% 
+#   subset(select = c("sequence_name", "sample_ID", "RPKMF")) %>%
+#   distinct(sequence_name, sample_ID, RPKMF) %>%
+#   group_by(sequence_name, sample_ID) %>%
+#   summarize(RPKMF = mean(RPKMF)) %>%
+#   pivot_wider(names_from = sequence_name, values_from = RPKMF, values_fill = 0)
+# 
+# sampleID_l <- seqname_sID_wide_dt$sample_ID
+# 
+# seqname_sID_wide_dt <- seqname_sID_wide_dt %>% subset(select = -sample_ID)
+# 
+# ##
+# tephi_prcomp1 <- prcomp(log10(seqname_sID_wide_dt+1))
+# 
+# emb <- Rtsne::Rtsne(tephi_prcomp1$x[,1:10])
+# 
+# embb <- emb$Y
+# 
+# rownames(embb) <- sampleID_l
+# 
+# embb_df <- as.data.frame(embb)
+# 
+# embb_dt <- setDT(embb_df, keep.rownames = "sample_ID")
+# 
+# embb_dt <- merge(embb_dt, comb_metadata_table, by ="sample_ID")
+# 
+# #embb_dt$City_Site <- str_c(embb_dt$City, ", ", embb_dt$Site)
+# 
+# embb_dt$Date <- as.Date(embb_dt$Date, "%m-%d-%Y")
+# 
+# as.Date_origin <- function(x){
+#   as.Date(x, origin = '1970-01-01')
+# }
+# 
+# embb_dt$City_Date <- str_c(embb_dt$City, ", ", embb_dt$Date)
+# 
+# 
+# 
+
+anim_date_tsnep <- embb_dt %>%
+  arrange(Date) %>%
+  ggplot(aes(x=V1, y=V2, color=as.integer(Date), group = Site)) +
+  geom_point(size = 3, alpha = 0.8) +
+  geom_path(linewidth = 1.1, alpha = 0.8) +
+  scale_color_gradient(low = "#FDD262",
+                       high = "#3F3F7B", labels=as.Date_origin, name = "Date") +
+  theme_bw() +
+  facet_wrap(~City) +
+  labs(x="t-SNE 1", y="t-SNE 2") +
+  transition_reveal(along = as.integer(Date)) 
+
+
+# 
+# 
+# anim_date_tsnep <- embb_dt %>%
+#   arrange(Date) %>%
+#   ggplot(aes(x=V1, y=V2, color=as.integer(Date), group = Site)) +
+#   geom_point(size = 3, alpha = 0.8) +
+#   geom_path(linewidth = 1.1, alpha = 0.8) +
+#   scale_color_gradient(low = "#FDD262",
+#                        high = "#3F3F7B", labels=as.Date_origin, name = "Date") +
+#   theme_bw() +
+#   facet_wrap(~City) +
+#   labs(x="t-SNE 1", y="t-SNE 2") +
+#   transition_reveal(along = as.integer(Date)) 
+
+
+
+
+
+
+
+
+##### preparing data to make a pulldown to check any virus species
+species_abund_dt <- merge(comb_tax_table, comb_metadata_table, 
+                          by = "sample_ID") %>%
+  mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
+  group_by(City) %>%
+  filter(n_distinct(Week) >= 3) %>%
+  ungroup() %>%
+  group_by(Site, species, Week) %>%
+  summarize(RPKMS = sum(RPKMF),
+            City = first(City)) %>%
+  ungroup() %>%
+  group_by(City, species, Week) %>%
+  summarize(RPKMFS = mean(RPKMS)) %>%
+  ungroup() %>%
+  complete(nesting(Week, City), species, fill = list(RPKMFS=0)) %>%
+  group_by(City, species) %>%
+  arrange(City, species, Week) %>%
+  mutate(moving_average = ma(RPKMFS)) %>%
+  ungroup()
+
+
+prevalent_sp_dt <- merge(species_abund_dt, city_dates, by = c("City", "Week")) %>%
+  group_by(species) %>%
+  mutate(nonzero = sum(RPKMFS != 0)) %>%
+  filter(nonzero >=10) %>%
+  select(-nonzero) %>%
+  ungroup() %>%
+  arrange(City, species, Week)
+# 
+# 
+# species_abund_dt <- merge(comb_tax_table, comb_metadata_table, 
+#                           by = "sample_ID") %>%
+#   mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
+#   group_by(City) %>%
+#   filter(n_distinct(Week) >= 3) %>%
+#   ungroup() %>%
+#   group_by(Site, species, Week) %>%
+#   summarize(RPKMS = sum(RPKMF),
+#             City = first(City)) %>%
+#   ungroup() %>%
+#   group_by(City, species, Week) %>%
+#   summarize(RPKMFS = mean(RPKMS)) %>%
+#   ungroup() %>%
+#   complete(nesting(Week, City), species, fill = list(RPKMFS=0)) %>%
+#   group_by(City, species) %>%
+#   arrange(City, species, Week) %>%
+#   mutate(moving_average = ma(RPKMFS)) %>%
+#   ungroup()
+# 
+# 
+# prevalent_sp_dt <- merge(species_abund_dt, city_dates, by = c("City", "Week")) %>%
+#   group_by(species) %>%
+#   mutate(nonzero = sum(RPKMFS != 0)) %>%
+#   filter(nonzero >=10) %>%
+#   select(-nonzero) %>%
+#   ungroup() %>%
+#   arrange(City, species, Week)
+
+
+
+
