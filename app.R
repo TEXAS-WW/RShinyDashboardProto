@@ -1,7 +1,7 @@
 
 
 source("DataPreprocessing.R")
-
+library(shiny)
 dirpath= file.path(getwd(), 'www')
 addResourcePath(prefix = 'www', directoryPath = dirpath)
 source("server.R")

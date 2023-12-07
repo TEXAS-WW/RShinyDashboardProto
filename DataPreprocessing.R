@@ -33,7 +33,7 @@ suppressPackageStartupMessages({
   library(RColorBrewer)
   library(gganimate)
   library(gifski)
-  library(shiny)
+  #library(shiny)
   library(shinydashboard)
  library(shinyWidgets)
   library(leaflet)
