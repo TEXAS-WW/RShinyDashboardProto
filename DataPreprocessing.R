@@ -33,9 +33,9 @@ suppressPackageStartupMessages({
   library(RColorBrewer)
   library(gganimate)
   library(gifski)
-  #library(shiny)
+  library(shiny)
   library(shinydashboard)
- library(shinyWidgets)
+  library(shinyWidgets)
   library(leaflet)
   library(dplyr)
   library(plotly)
@@ -71,11 +71,16 @@ WWTP_files <- list.files(sprintf(
   find_rstudio_root_file()), 
   pattern = "location.*\\.xlsx$", full.names = TRUE)
 
+
 ## load and combine all as one table
 WWTP <- rbindlist(lapply(WWTP_files, read_excel), fill= TRUE)
+print("TESTING WWTP dataframe - DataPreprocessing.R - line 76")
+print(WWTP)
+
+WWTP <- as.data.frame(WWTP)
+
 colnames(WWTP) = c("State", "County", "City", "WWTP", "lat","lon","county_centroid_lat","county_centroid_lon","city_centroid_lat",
-                   "city_centroid_lon","Radius", "Color", "Weight", "FillOpacity"
-                   )
+                   "city_centroid_lon","Radius", "Color", "Weight", "FillOpacity")
 
 ### site_codes
 ## replace real site names with codes 
@@ -83,7 +88,6 @@ code_dt <- read_excel(sprintf("%s/Data/site_coding/WWTP_codes1.xlsx", find_rstud
 
 ## load abbreviations -> sites/cities table
 abbr_dt <- read_excel(sprintf("%s/Data/site_coding/Sites_and_abbreviations.xlsx", find_rstudio_root_file()))
-
 
 # Get state boundaries
 us_states <- states()
@@ -140,7 +144,10 @@ tax_files <- list.files(sprintf(
 
 ## load and combine all as one table
 comb_tax_table <- rbindlist(lapply(tax_files, fread))
+comb_tax_table <- as.data.frame(comb_tax_table)
 
+print("TESTING TAXONOMICAL PROFILE")
+print(comb_tax_table)
 ### metadata
 ## list of relevant files in the directory
 metadata_files <- list.files(sprintf(
@@ -150,6 +157,7 @@ metadata_files <- list.files(sprintf(
 
 ## load and combine all as one table
 comb_metadata_table <- rbindlist(lapply(metadata_files, read_excel))
+comb_metadata_table <- as.data.frame(comb_metadata_table)
 
 colnames(comb_metadata_table) = c("sample_ID", "Site", "City", "Date", "Flow", "PoolID")
 
@@ -174,12 +182,16 @@ coverage_files <- list.files(sprintf(
   find_rstudio_root_file()), 
   pattern = "*.mean_cov.tsv", full.names = TRUE)
 
+
 ## load and combine all as one table
 comb_coverage_table <- rbindlist(
   lapply(coverage_files, 
          fread, header = F, 
          col.names = 
            c("sample_ID", "accession", "start_base", "end_base", "mean_depth")))
+comb_coverage_table <- as.data.frame(comb_coverage_table)
+
+
 
 
 #-# load all batches of qPCR Data
@@ -189,15 +201,15 @@ qPCR_files <- list.files(sprintf(
   "%s/Data/qPCR", 
   find_rstudio_root_file()), 
   pattern = "*.csv", full.names = TRUE)
+
 #qPCR_files
 ## load and combine all as one table
 comb_qPCR_table <- rbindlist(lapply(qPCR_files, fread, colClasses = "character" ))
 
+comb_qPCR_table <- as.data.frame(comb_qPCR_table)
 
 
 comb_qPCR_table$date_of_collection <- as.POSIXct(comb_qPCR_table$date_of_collection)
-
-
 
 
 # fix all the formatting, average genome copies
@@ -308,20 +320,6 @@ qPCR_ma_p <- comb_qPCR_table %>%
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #-# prepare table for major pathogen moving average plot
 
 major_path_met_dt <- merge(comb_tax_table, comb_metadata_table, 
@@ -346,10 +344,6 @@ major_path_met_dt <- merge(comb_tax_table, comb_metadata_table,
 
 
 
-
-
-
-
 # major_path_met_dt <- merge(comb_tax_table, comb_metadata_table, 
 #                            by = "sample_ID") %>%
 #   mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
@@ -369,6 +363,7 @@ major_path_met_dt <- merge(comb_tax_table, comb_metadata_table,
 #   group_by(species, City) %>%
 #   mutate(rel_ab = RPKMF/sum(RPKMF)) %>%
 #   ungroup()
+
 
 
 #-# Parse to expand but then only keep sampled dates
@@ -402,10 +397,7 @@ major_path_expand_dt <- major_path_met_dt %>%
          species = gsub("Human orthopneumovirus", "Respiratory syncytial virus B", species))
 
 major_path_expand_dt <- merge(major_path_expand_dt, city_dates, by = c("City", "Week"))
-# 
-# 
-# 
-# 
+
 # city_dates <- comb_metadata_table %>%
 #   mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
 #   select(c(City, Week)) %>%
@@ -433,9 +425,6 @@ major_path_expand_dt <- merge(major_path_expand_dt, city_dates, by = c("City", "
 #          species = gsub("Human orthopneumovirus", "Respiratory syncytial virus B", species))
 # 
 # major_path_expand_dt <- merge(major_path_expand_dt, city_dates, by = c("City", "Week"))
-# 
-# 
-# 
 # 
 
 
@@ -476,6 +465,7 @@ genome_data <- merge(comb_tax_table, comb_metadata_table,
                         "Human mastadenovirus B", "Hepatovirus A", 
                         "Human respirovirus 1", "Human respirovirus 3"))
 
+
 combined_react_data <- merge(genome_data, sum_coverage, 
                              by = c("sample_ID","accession"))
 
@@ -511,7 +501,6 @@ trend_major_path_dt <- major_path_expand_dt %>%
     moving_average[Week == most_recent_week] == 0 & moving_average[Week == four_weeks_before] > 0  ~ "Going to 0",
     TRUE ~ "other"
   ))
-
 
 
 trend_major_path_dt %>%
