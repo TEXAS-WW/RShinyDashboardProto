@@ -49,3 +49,6 @@ po/*~
 rsconnect
 
 global.R
+
+.DS_Store
+Data/

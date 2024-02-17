@@ -58,54 +58,50 @@ input:radio:checked + label {
   }
   
   
-  #trendPlot{
-  height:700px !important;
-  width:1100px !important;
+  trendPlot{
+
   }
   
     
-  #cds_TrendPlot{
-  height:700px !important;
-  width:1500px !important;
+  cds_TrendPlot{
+  width: 1500px!important;
+  height: 700px!important;
   }
       
   cds_TrendPlot_zoomed{
   height:700px !important;
-  width:800px !important;
+  width: 100% !important;
   }
       
-  #collectionDatesPlot_cds{
-  height:400px !important;
-  width:1500px !important;
+  collectionDatesPlot_cds{
+  width: 1500px !important;
+  height: 1000px !important;
+
   }
   
-.cds-daterange-text {
-font-size: 20px;  /* Adjust size as needed */
-font-weight: bold;  /* Makes the text bold */
-color: #333;  /* Change the text color */
-/* Add any other CSS properties here */
-                                  }
+  .cds-daterange-text {
+  font-size: 20px;  /* Adjust size as needed */
+  font-weight: bold;  /* Makes the text bold */
+  color: #333;  /* Change the text color */
+  /* Add any other CSS properties here */
+                                    }
  
      
-  #qpcr_TrendPlot{
+  qpcr_TrendPlot{
   height:700px !important;
-  width:1500px !important;
+  width: 100% !important;
   }
   
-      
-  #collectionDatesPlot_qpcr{
-  height:600px !important;
-  width:1000px !important;
-  }
+
 
   city_tsnep{
   height:700px !important;
-  width:600px !important;
+  width: 100% !important;
   }
 
   animation{
   height:700px !important;
-  width:600px !important;
+  width: 100% !important;
   }
   
 .qpcr-daterange-text {
