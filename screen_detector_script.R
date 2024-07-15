@@ -1,6 +1,6 @@
 
 screen_detector_script = '
-console.log("SCREEN DETECTOR SCRIPT");
+
 var dimension = [0, 0];
 
 let baseHeight = 710;
