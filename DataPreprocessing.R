@@ -2,224 +2,145 @@
 ## Read in Data, Shapefiles and Mapped Objects
 ###########################################################
 
-# Required Packages
-source("variables.R")
+# Load required packages for data manipulation and visualization
+#source("variables.R")  # Source global variables defined in external file for consistency
 suppressPackageStartupMessages({
-  library(feasts)
-  library(tsibble)
-  library(lubridate)
-  library(ggplot2)
-  library(viridis)
-  library(lubridate)
-  library(ggExtra)
-  library(tidyr)
-  library(dygraphs)
-  library(xts)
-  library(tidyverse)
-  library(readxl)
-  library(writexl)
-  library(janitor)
-  library(ggpubr)
-  library(rgdal)
-  library(readr)
-  library(stringi)
-  library(tidycensus)
-  library(tigris)
-  library(sf)
-  library(rprojroot)
-  library(data.table)
-  library(wesanderson)
-  library(Rtsne)
-  library(RColorBrewer)
-  library(gganimate)
-  library(gifski)
-  library(shiny)
-  library(shinydashboard)
-  library(shinyWidgets)
-  library(leaflet)
-  library(dplyr)
-  library(plotly)
-  library(xtable)
-  library(reactable)
-  library(DT)
-  library(shinythemes)
-  library(htmltools)
-  library(maps)
-  library(reactablefmtr)
-  library(gganimate)
-  library(sparkline)
- # install_github("timelyportfolio/dataui")
-  library(dataui)
-  library(devtools)
-  library(viridis)
-  library(scales)
-  library(gifski)
-  library(cdlTools) # converting state fips to state name
-  options(tigris_use_cache  = TRUE)
+  # Load a series of libraries without showing any package startup messages
+  library(feasts)  # For time series features
+  library(tsibble)  # For handling time series data in a tidy format
+  library(lubridate)  # For date-time manipulation
+  library(ggplot2)  # For creating static visualizations
+  library(viridis)  # For color scales that are perceptually uniform in both colour and greyscale
+  library(ggExtra)  # For adding marginal histograms to ggplot2, and more ggplot2 enhancements
+  library(tidyr)  # For data tidying
+  library(dygraphs)  # For interactive time series charting
+  library(xts)  # For handling time-series data
+  library(tidyverse)  # For easy data manipulation and visualization
+  library(readxl)  # For reading Excel files
+  library(writexl)  # For writing Excel files
+  library(janitor)  # For cleaning up messy data
+  library(ggpubr)  # For 'ggplot2' based publication ready plots
+  library(readr)  # For reading rectangular data
+  library(stringi)  # For fast, correct string manipulation
+  library(tidycensus)  # For loading US Census data
+  library(tigris)  # For loading geographic data from the US Census Bureau
+  library(sf)  # For simple features, a standardized way to encode spatial vector data
+  library(rprojroot)  # For finding the root of a project directory
+  library(data.table)  # For enhanced data manipulation
+  library(wesanderson)  # For Wes Anderson color palettes
+  library(Rtsne)  # For T-distributed Stochastic Neighbor Embedding (t-SNE)
+  library(RColorBrewer)  # For color palettes
+  library(gganimate)  # For animating ggplot2 visualizations
+  library(gifski)  # For rendering animations to GIF
+  library(shiny)  # For building interactive web apps straight from R
+  library(shinydashboard)  # For creating dashboards with 'Shiny'
+  library(shinyWidgets)  # For custom widgets like buttons, sliders, etc.
+  library(leaflet)  # For interactive maps
+  library(dplyr)  # For data manipulation
+  library(plotly)  # For creating interactive web graphics via 'plotly.js'
+  library(xtable)  # For exporting tables to LaTeX or HTML
+  library(reactable)  # For creating interactive data tables
+  library(DT)  # For rendering data tables
+  library(shinythemes)  # For additional themes for 'Shiny' apps
+  library(htmltools)  # For HTML rendering tools
+  library(maps)  # For drawing geographical maps
+  library(reactablefmtr)  # For formatting options for reactable
+  library(sparkline)  # For generating sparklines in 'Shiny' applications
+  library(dataui)  # For interactive web data components
+  library(devtools)  # For development tools
+  library(scales)  # For graphical scales mapping data to aesthetics
+  library(cdlTools)  # For converting state FIPS codes to state names
+  options(tigris_use_cache = TRUE)  # Use local caching for 'tigris' data
 })
 
+# Function to calculate moving averages
+ma <- function(x, n = 3) {
+  # Calculate moving averages using a simple mean over n periods
+  stats::filter(x, rep(1 / n, n), sides = 1)
+}
 
-#-# moving average function
-
-ma <- function(x, n = 3){stats::filter(x, rep(1 / n, n), sides = 1)}
-
-# Read in data for WWTP Address and Centroid for Counties
-
-## list of relevant files in the directory
+# Load data related to Wastewater Treatment Plant (WWTP) locations
+# This section reads multiple Excel files containing site coding, merges them, and standardizes column names
 WWTP_files <- list.files(sprintf(
   "%s/Data/site_coding", 
   find_rstudio_root_file()), 
   pattern = "location.*\\.xlsx$", full.names = TRUE)
-
-
-## load and combine all as one table
-WWTP <- rbindlist(lapply(WWTP_files, read_excel), fill= TRUE)
-print("TESTING WWTP dataframe - DataPreprocessing.R - line 76")
-print(WWTP)
-
+WWTP <- rbindlist(lapply(WWTP_files, read_excel), fill = TRUE)
 WWTP <- as.data.frame(WWTP)
+colnames(WWTP) = c("State", "County", "City", "WWTP", "lat", "lon", "county_centroid_lat", "county_centroid_lon", "city_centroid_lat",
+                   "city_centroid_lon", "Radius", "Color", "Weight", "FillOpacity")
 
-colnames(WWTP) = c("State", "County", "City", "WWTP", "lat","lon","county_centroid_lat","county_centroid_lon","city_centroid_lat",
-                   "city_centroid_lon","Radius", "Color", "Weight", "FillOpacity")
-
-### site_codes
-## replace real site names with codes 
+# Read and replace real site names with codes for anonymization
 code_dt <- read_excel(sprintf("%s/Data/site_coding/WWTP_codes1.xlsx", find_rstudio_root_file()))
-
-## load abbreviations -> sites/cities table
 abbr_dt <- read_excel(sprintf("%s/Data/site_coding/Sites_and_abbreviations.xlsx", find_rstudio_root_file()))
 
-# Get state boundaries
+# Load US state boundaries and filter for Texas
 us_states <- states()
-
-# Filter for Texas
 texas_boundary <- us_states[us_states$STUSPS == "TX", ]
 
-
-CountyWWTP = WWTP[-1,] %>% 
+# Aggregate data by county within Texas, merging with shapefiles for mapping
+CountyWWTP <- WWTP %>% 
   group_by(County, county_centroid_lon, county_centroid_lat, Color, Radius, Weight, FillOpacity) %>% 
   summarize(totalWWTP = n_distinct(WWTP)) 
-
 names(CountyWWTP)[1] = "NAMELSAD"
-# CountyWWTP$Color = c("red","lightgreen","lightblue","orange","yellow","darkblue")
-# CountyWWTP$Radius = c(12,16,20,8,8,8)
-# CountyWWTP$Weight = rep(3,6)
-# CountyWWTP$FillOpacity = rep(0.8,6)
+county_data_shp <- tigris::counties(state = "TX", year = 2021)
+merged_CountyWWTP <- left_join(county_data_shp, CountyWWTP, by = "NAMELSAD")
+merged_CountyWWTP$Weight <- replace(merged_CountyWWTP$Weight, is.na(merged_CountyWWTP$Weight), 0)
+merged_CountyWWTP$Radius <- replace(merged_CountyWWTP$Radius, is.na(merged_CountyWWTP$Radius), 0)
+merged_CountyWWTP$FillOpacity <- replace(merged_CountyWWTP$FillOpacity, is.na(merged_CountyWWTP$FillOpacity), 0)
+merged_CountyWWTP$Color <- replace(merged_CountyWWTP$Color, is.na(merged_CountyWWTP$Color), "#F5DEB3")
+merged_CountyWWTP$totalWWTP <- replace(merged_CountyWWTP$totalWWTP, is.na(merged_CountyWWTP$totalWWTP), 0)
 
-
-county_data_shp <- tigris::counties(state = "TX", year=2021)
-
-
-merged_CountyWWTP = left_join(county_data_shp,CountyWWTP, by = "NAMELSAD")
-
-merged_CountyWWTP$Weight = replace(merged_CountyWWTP$Weight, is.na(merged_CountyWWTP$Weight), 0)
-merged_CountyWWTP$Radius = replace(merged_CountyWWTP$Radius, is.na(merged_CountyWWTP$Radius), 0)
-merged_CountyWWTP$FillOpacity = replace(merged_CountyWWTP$FillOpacity, is.na(merged_CountyWWTP$FillOpacity), 0)
-merged_CountyWWTP$Color = replace(merged_CountyWWTP$Color, is.na(merged_CountyWWTP$Color), "#F5DEB3")
-merged_CountyWWTP$totalWWTP = replace(merged_CountyWWTP$totalWWTP, is.na(merged_CountyWWTP$totalWWTP), 0)
-
-# 
-# #county_data_shp$wwtp = rep(0,length(county_data_shp$NAMELSAD))
-# 
-# #county_data_shp$wwtp <- ifelse(county_data_shp$NAMELSAD == "Harris County", 9,
-#                                  ifelse(county_data_shp$NAMELSAD == "El Paso County", 4,
-#                                         ifelse(county_data_shp$NAMELSAD == "Fort Bend County", 1,
-#                                           ifelse(county_data_shp$NAMELSAD == "Cameron County", 2,
-#                                                  ifelse(county_data_shp$NAMELSAD == "Lubbock County", 1,
-#                                                         ifelse(county_data_shp$NAMELSAD == "Wichita County", 1, 0))))))
-
-
-
-
-##################### READ IN METADATA TABLE ###########
-#-# load all batches of files
-
-
-### taxonomical profiles
-## list of relevant files in the directory
+# Read and process metadata for taxonomical and genomic data
 tax_files <- list.files(sprintf(
   "%s/Data/taxonomical_profiles", 
   find_rstudio_root_file()), 
   pattern = "*.tax.tsv", full.names = TRUE)
-
-## load and combine all as one table
 comb_tax_table <- rbindlist(lapply(tax_files, fread))
 comb_tax_table <- as.data.frame(comb_tax_table)
-
-print("TESTING TAXONOMICAL PROFILE")
-print(comb_tax_table)
-### metadata
-## list of relevant files in the directory
 metadata_files <- list.files(sprintf(
   "%s/Data/metadata", 
   find_rstudio_root_file()), 
   pattern = "*.xlsx", full.names = TRUE)
-
-## load and combine all as one table
 comb_metadata_table <- rbindlist(lapply(metadata_files, read_excel))
 comb_metadata_table <- as.data.frame(comb_metadata_table)
-
 colnames(comb_metadata_table) = c("sample_ID", "Site", "City", "Date", "Flow", "PoolID")
-
 comb_metadata_table$Date <- as.Date(comb_metadata_table$Date)
 
-
-
-
-comb_metadata_table <- merge(comb_metadata_table, code_dt, 
-                             by.x = "Site", by.y = "Name", all.x = T)
-
+# Combine metadata with site codes and reformat table for further analysis
+comb_metadata_table <- merge(comb_metadata_table, code_dt, by.x = "Site", by.y = "Name", all.x = TRUE)
 comb_metadata_table$Site <- comb_metadata_table$Code
-
 comb_metadata_table <- comb_metadata_table %>% 
   mutate(sample_ID = paste(sample_ID, PoolID, sep = ".")) %>%
   select(-c(Code, PoolID))
 
-### genome coverage
-## list of relevant files in the directory
+# Read genome coverage data and merge with taxonomical profiles
 coverage_files <- list.files(sprintf(
   "%s/Data/genome_coverage", 
   find_rstudio_root_file()), 
   pattern = "*.mean_cov.tsv", full.names = TRUE)
-
-
-## load and combine all as one table
 comb_coverage_table <- rbindlist(
   lapply(coverage_files, 
-         fread, header = F, 
-         col.names = 
-           c("sample_ID", "accession", "start_base", "end_base", "mean_depth")))
+         fread, header = FALSE, 
+         col.names = c("sample_ID", "accession", "start_base", "end_base", "mean_depth")))
 comb_coverage_table <- as.data.frame(comb_coverage_table)
 
-
-
-
-#-# load all batches of qPCR Data
-
-## list of relevant files in the directory
+# Load qPCR data, format, and prepare for analysis
 qPCR_files <- list.files(sprintf(
   "%s/Data/qPCR", 
   find_rstudio_root_file()), 
   pattern = "*.csv", full.names = TRUE)
-
-#qPCR_files
-## load and combine all as one table
-comb_qPCR_table <- rbindlist(lapply(qPCR_files, fread, colClasses = "character" ))
-
+comb_qPCR_table <- rbindlist(lapply(qPCR_files, fread, colClasses = "character"))
 comb_qPCR_table <- as.data.frame(comb_qPCR_table)
-
-
 comb_qPCR_table$date_of_collection <- as.POSIXct(comb_qPCR_table$date_of_collection)
-
-
-# fix all the formatting, average genome copies
-
-comb_qPCR_table <- merge(comb_qPCR_table, abbr_dt,  by = "LocationAbbr") %>%
+comb_qPCR_table <- merge(comb_qPCR_table, abbr_dt, by = "LocationAbbr") %>%
   mutate(Week = floor_date(as.Date(date_of_collection), "weeks", week_start = 1),
          copiesperml = as.numeric(copiesperml)) %>%
   group_by(LocationAbbr, CMMR_Barcode, Target, SampleName, Week, City) %>%
   summarize(average_genome_copies_L = mean(copiesperml)) %>%
   ungroup()
+
+
 
 ## calculate unique cities
 virome_cities <- comb_metadata_table %>% 
@@ -239,6 +160,8 @@ total_cities <- merge(virome_cities, qPCR_cities_dt, by = "City", all = T)
 
 WWTP_cities <- list(unique(total_cities$City))
 WWTP_cities <- gsub(", TX", "", WWTP_cities[[1]])
+
+WWTP_citieslength <- length(unique(total_cities$City))
 
 ### Coordinates, Texas Cities with WWTPs in TEPHI program
 
@@ -250,78 +173,37 @@ invisible(capture.output(
     st_cast("POINT") %>% as("Spatial") 
 ))
 
-
-
-
-## calculate unique cities
-virome_cities <- comb_metadata_table %>% 
+# Calculate unique cities for virome and qPCR analysis
+# This section creates distinct lists of cities based on metadata and qPCR data, ensuring data consistency across analyses
+virome_cities <- comb_metadata_table %>%
   ungroup() %>%
-  filter(City != "other") %>% 
+  filter(City != "other") %>%
   select(City) %>%
   unique()
 
-qPCR_cities_dt <- comb_qPCR_table %>% 
+qPCR_cities_dt <- comb_qPCR_table %>%
   ungroup() %>%
-  filter(City != "other") %>% 
+  filter(City != "other") %>%
   select(City) %>%
   unique()
 
-
-
-
-total_cities <- merge(virome_cities, qPCR_cities_dt, by = "City", all = T)
-
+# Combine the city lists into a single dataset and remove duplicates
+total_cities <- merge(virome_cities, qPCR_cities_dt, by = "City", all = TRUE)
 WWTP_cities <- list(unique(total_cities$City))
-WWTP_cities <- gsub(", TX", "", WWTP_cities[[1]])
+WWTP_cities <- gsub(", TX", "", WWTP_cities[[1]])  # Remove state suffix for cleaner city names
 
+# Coordinate handling for Texas cities involved in the TEPHI program
+# This part reads shapefiles for Texas cities, filters them by cities with WWTPs, and converts them to spatial points for mapping
+invisible(capture.output(
+  cities <- st_read(sprintf(
+    "%s/Data/geographical_files/Texas_Cities/City.shp", 
+    find_rstudio_root_file())) %>% 
+    filter(CITY_NM %in% WWTP_cities) %>% 
+    st_cast("POINT") %>% as("Spatial")  # Convert shape data to simple POINT type for easier handling
+))
 
-WWTP_citieslength <- length(unique(total_cities$City))
-
-# Load data for US states
-states <- map_data("state")
-
-# Filter for Texas
-texas <- subset(states, region == "texas")
-
-texas_sf <- st_as_sf(texas, coords = c("long", "lat"), crs = 4326)
-
-
-
-
-
-# qPCR (Targeted): Quantification of Specific Pathogens in Wastewater
-
-
-
-qPCR_ma_p <- comb_qPCR_table %>%
-  #filter(City != "other") %>%
-  filter(City != "other",
-         Target %in% c("SARSCOV2N1", "INFLUENZAA", "INFLUENZAB", 
-                       "NOROVIRUS", "MONKEYPOX")) %>%
-  mutate(Target = gsub("SARSCOV2N1", "SARS-CoV-2", Target),
-         Target = gsub("INFLUENZAA", "Influenza A virus", Target),
-         Target = gsub("INFLUENZAB", "Influenza B virus", Target),
-         Target = gsub("NOROVIRUS", "Norovirus GII", Target),
-         Target = gsub("MONKEYPOX", "Monkeypox virus", Target)) %>%
-  group_by(Week, City, Target) %>%
-  summarize(average_genome_copies_L = mean(average_genome_copies_L)) %>%
-  ungroup() %>%
-  group_by(City, Target) %>%
-  filter(n_distinct(Week) >= 3) %>%
-  arrange(City, Target, Week) %>%
-  mutate(moving_average = ma(average_genome_copies_L)) %>%
-  ungroup()
-
-
-
-
-## Collection Dates and Sites for all Comprehensive Deep Sequencing Samples
-
-
-
-
-#-# prepare table for major pathogen moving average plot
-
+# Prepare the data tables for pathogen analysis based on sequencing and qPCR data
+# This includes mapping, averaging, and normalizing the data for further analysis
 major_path_met_dt <- merge(comb_tax_table, comb_metadata_table, 
                            by = "sample_ID") %>%
   mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
@@ -342,39 +224,11 @@ major_path_met_dt <- merge(comb_tax_table, comb_metadata_table,
   mutate(rel_ab = RPKMF/sum(RPKMF)) %>%
   ungroup()
 
-
-
-# major_path_met_dt <- merge(comb_tax_table, comb_metadata_table, 
-#                            by = "sample_ID") %>%
-#   mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
-#   group_by(City) %>%
-#   filter(n_distinct(Week) >= 3) %>%
-#   ungroup() %>%
-#   filter(species %in% c("Norwalk virus", "Enterovirus D", "Rotavirus A", 
-#                         "Influenza A virus", 
-#                         "Severe acute respiratory syndrome-related coronavirus", 
-#                         "Monkeypox virus", "Respiratory syncytial virus",
-#                         "Human orthopneumovirus",
-#                         "Human mastadenovirus B", "Hepatovirus A", 
-#                         "Human respirovirus 1", "Human respirovirus 3")) %>%
-#   group_by(sample_ID, City, Week, species) %>%
-#   summarize(RPKMF = sum(RPKMF)) %>%
-#   ungroup() %>%
-#   group_by(species, City) %>%
-#   mutate(rel_ab = RPKMF/sum(RPKMF)) %>%
-#   ungroup()
-
-
-
-#-# Parse to expand but then only keep sampled dates
-
-
-
+# Expand pathogen data to include all weeks sampled, filling gaps where no data exists
 city_dates <- comb_metadata_table %>%
   mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
   select(c(City, Week)) %>%
   distinct()
-
 major_path_expand_dt <- major_path_met_dt %>%
   group_by(Week, City, species) %>%
   summarize(rel_ab = sum(rel_ab),
@@ -398,116 +252,93 @@ major_path_expand_dt <- major_path_met_dt %>%
 
 major_path_expand_dt <- merge(major_path_expand_dt, city_dates, by = c("City", "Week"))
 
-# city_dates <- comb_metadata_table %>%
-#   mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
-#   select(c(City, Week)) %>%
-#   distinct()
-# 
-# major_path_expand_dt <- major_path_met_dt %>%
-#   group_by(Week, City, species) %>%
-#   summarize(rel_ab = sum(rel_ab),
-#             RPKMF = mean(RPKMF)) %>%
-#   ungroup() %>%
-#   complete(Week, City, species, fill = list(rel_ab = 0, RPKMF = 0)) %>%
-#   group_by(City, species) %>%
-#   arrange(City, species, Week) %>%
-#   mutate(moving_average = ma(RPKMF)) %>%
-#   ungroup() %>%
-#   mutate(species = gsub("Enterovirus D", "Enterovirus D68", species),
-#          species = gsub("Norwalk virus", "Noroviruses", species),
-#          species = gsub("Severe acute respiratory syndrome-related coronavirus",
-#                         "SARS-CoV-2", species),
-#          species = gsub("Hepatovirus A", "Hepatitis A Virus", species),
-#          species = gsub("Human respirovirus 3", "Parainfluenza Virus 3", species),
-#          species = gsub("Human respirovirus 1", "Parainfluenza Virus 1", species),
-#          species = gsub("Human mastadenovirus B", "Human Adenovirus B", species),
-#          species = gsub("Respiratory syncytial virus", "Respiratory syncytial virus A", species),
-#          species = gsub("Human orthopneumovirus", "Respiratory syncytial virus B", species))
-# 
-# major_path_expand_dt <- merge(major_path_expand_dt, city_dates, by = c("City", "Week"))
-# 
-
-
-major_path_expand_dt$City = gsub(",.*$", "", major_path_expand_dt$City)
-
-
+# Date range calculations for interactive displays and filtering
+# These calculations find the minimum and maximum dates for comprehensive deep sequencing and qPCR datasets
 minDate_cds <- as.Date(min(major_path_expand_dt$Week, na.rm = TRUE))
 maxDate_cds <- as.Date(max(major_path_expand_dt$Week, na.rm = TRUE))
 
-minDate_qpcr<- as.Date(min(qPCR_ma_p$Week, na.rm = TRUE))
+
+# qPCR (Targeted): Quantification of Specific Pathogens in Wastewater
+
+qPCR_ma_p <- comb_qPCR_table %>%
+  filter(City != "other",
+         Target %in% c("SARSCOV2N1", "INFLUENZAA", "INFLUENZAB", 
+                       "NOROVIRUS", "MONKEYPOX")) %>%
+  mutate(Target = gsub("SARSCOV2N1", "SARS-CoV-2", Target),
+         Target = gsub("INFLUENZAA", "Influenza A virus", Target),
+         Target = gsub("INFLUENZAB", "Influenza B virus", Target),
+         Target = gsub("NOROVIRUS", "Norovirus GII", Target),
+         Target = gsub("MONKEYPOX", "Monkeypox virus", Target)) %>%
+  group_by(Week, City, Target) %>%
+  summarize(average_genome_copies_L = mean(average_genome_copies_L)) %>%
+  ungroup() %>%
+  group_by(City, Target) %>%
+  filter(n_distinct(Week) >= 3) %>%
+  arrange(City, Target, Week) %>%
+  mutate(moving_average = ma(average_genome_copies_L)) %>%
+  ungroup()
+
+print(qPCR_ma_p)
+
+minDate_qpcr <- as.Date(min(qPCR_ma_p$Week, na.rm = TRUE))
 maxDate_qpcr <- as.Date(max(qPCR_ma_p$Week, na.rm = TRUE))
 
 
-
-
 # DATA PREPARATION FOR INTERACTIVE TABLE
+# Format the coverage data for reactable displays
+comb_coverage_table$mean_depth <- round(comb_coverage_table$mean_depth)  # Round mean depth values for cleaner display
 
-#-# Make reactables for major pathogens format tables
-#format coverage for reactable
-comb_coverage_table$mean_depth <- round(comb_coverage_table$mean_depth)
-
-
+# Aggregate coverage data by sample and accession to create a list of mean depth values
 sum_coverage <- comb_coverage_table %>%
   group_by(sample_ID, accession) %>%
   summarize(coverage = list(mean_depth)) 
 
-sum_coverage <- setDT(sum_coverage)
+sum_coverage <- setDT(sum_coverage)  # Convert to data.table for better performance on large data sets
 
-#merge tax profile, metadata, and coverage
-
-genome_data <- merge(comb_tax_table, comb_metadata_table, 
-                     by = "sample_ID") %>%
-  filter(species %in% c("Enterovirus D", #"Rotavirus A", 
-                        "Influenza A virus", 
+# Merge taxonomic profile, metadata, and coverage into a single dataset
+genome_data <- merge(comb_tax_table, comb_metadata_table, by = "sample_ID") %>%
+  filter(species %in% c("Enterovirus D", "Influenza A virus", 
                         "Severe acute respiratory syndrome-related coronavirus", 
                         "Monkeypox virus", "Respiratory syncytial virus", 
                         "Human orthopneumovirus",
                         "Human mastadenovirus B", "Hepatovirus A", 
                         "Human respirovirus 1", "Human respirovirus 3"))
 
+combined_react_data <- merge(genome_data, sum_coverage, by = c("sample_ID", "accession"))
 
-combined_react_data <- merge(genome_data, sum_coverage, 
-                             by = c("sample_ID","accession"))
-
-
-
+# Select and reformat the data for better readability in the interactive table
 combined_react_data <- subset(combined_react_data, select = c("sample_ID", "Site", "City", "Date", "accession", "sequence_name", "reference_length", "RPKMF", "covered_bases", "coverage"))
-combined_react_data$Percent_covered <- combined_react_data$covered_bases / combined_react_data$reference_length
-
+combined_react_data$Percent_covered <- combined_react_data$covered_bases / combined_react_data$reference_length  # Calculate percentage coverage
 combined_react_data <- subset(combined_react_data, select = c("sample_ID", "Site", "City", "Date", "sequence_name", "accession", "reference_length", "Percent_covered", "RPKMF", "coverage"))
 
-
-#### INTERACTIVE TABLE 
-
+# INTERACTIVE TABLE PREPARATION
+# Analyze pathogen trends and generate data for interactive display
 trend_major_path_dt <- major_path_expand_dt %>%
   group_by(City, species) %>%
-  mutate(most_recent_week = last(Week),
-         four_weeks_before = (most_recent_week - 28)) %>%
-  filter(Week == most_recent_week |
-           Week == four_weeks_before) %>%
-  filter(n() == 2) %>%
-  mutate(observation_label = case_when(
-    Week == most_recent_week ~ "Most Recent Week",
-    Week == four_weeks_before ~ "Four Weeks Earlier",
-    TRUE ~ "other"),
-    difference = (moving_average[Week == most_recent_week] / moving_average[Week == four_weeks_before]) -1
-  ) %>%
-  mutate(Interpretation = case_when(
-    moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference > 0.25 ~ "Increase from Baseline",
-    moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference < -0.25 ~ "Decrease from Baseline",
-    moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference >= -0.25 & difference <= 0.25 ~ "Little Change",
-    moving_average[Week == most_recent_week] == 0 & moving_average[Week == four_weeks_before] == 0  ~ "Constant at 0",
-    moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] == 0  ~ "(Re)-emerging from 0",
-    moving_average[Week == most_recent_week] == 0 & moving_average[Week == four_weeks_before] > 0  ~ "Going to 0",
-    TRUE ~ "other"
-  ))
-
+  mutate(most_recent_week = last(Week),  # Identify the most recent week of data
+         four_weeks_before = (most_recent_week - 28)) %>% # Calculate the date four weeks prior for comparison
+filter(Week == most_recent_week | Week == four_weeks_before) %>% # Filter to only these two points
+filter(n() == 2)  %>% # Ensure both time points are present for each city/species pair
+mutate(observation_label = case_when(
+  Week == most_recent_week ~ "Most Recent Week",
+  Week == four_weeks_before ~ "Four Weeks Earlier",
+  TRUE ~ "other"),
+  difference = (moving_average[Week == most_recent_week] / moving_average[Week == four_weeks_before]) - 1) %>% # Calculate the percentage difference between the two time points
+mutate(Interpretation = case_when(
+  moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference > 0.25 ~ "Increase from Baseline",
+  moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference < -0.25 ~ "Decrease from Baseline",
+  moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference >= -0.25 & difference <= 0.25 ~ "Little Change",
+  moving_average[Week == most_recent_week] == 0 & moving_average[Week == four_weeks_before] == 0  ~ "Constant at 0",
+  moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] == 0  ~ "(Re)-emerging from 0",
+  moving_average[Week == most_recent_week] == 0 & moving_average[Week == four_weeks_before] > 0  ~ "Going to 0",
+  TRUE ~ "other"
+))  # Interpret the changes for reporting in the table
 
 trend_major_path_dt %>%
   select(c(City, Week, most_recent_week, species, difference, Interpretation, moving_average)) %>%
   filter(Week == most_recent_week) %>%
   distinct() %>%
-  mutate(interpretation_color = case_when(
+  mutate(interpretation_color = case_when(  # Assign colors based on the interpretation for visual cues in the table
     Interpretation == "Increase from Baseline" ~ "orangered",
     Interpretation == "Decrease from Baseline" ~ "cadetblue",
     Interpretation == "Little Change" ~ "grey60",
@@ -517,188 +348,77 @@ trend_major_path_dt %>%
     TRUE ~ "black"
   ),
   difference = case_when(
-    #difference == "-Inf" ~ 0,
-    difference == "NaN" ~ 0,
+    difference == "NaN" ~ 0,  # Handle NaN values explicitly
     Interpretation == "Going to 0" ~ -1,
     Interpretation == "(Re)-emerging from 0" ~ 1,
     TRUE ~ difference
   ),
-  difference = difference * 100) %>%
-  arrange(desc(difference))
+  difference = difference * 100)  %>% # Convert difference to a percentage for clarity
+arrange(desc(difference))  # Sort by difference to highlight significant changes
 
 
-#-# Calculate tSNE
-
-comb_tax_table$RPKMF <- as.numeric(comb_tax_table$RPKMF)
-
-seqname_sID_wide_dt <- 
-  comb_tax_table %>% 
+# Calculate tSNE for visualizing data complexity and relationships
+# t-Distributed Stochastic Neighbor Embedding (t-SNE) is a machine learning algorithm for dimensionality reduction, useful for visualizing high-dimensional data
+seqname_sID_wide_dt <-  comb_tax_table %>%
   subset(select = c("sequence_name", "sample_ID", "RPKMF")) %>%
   distinct(sequence_name, sample_ID, RPKMF) %>%
   group_by(sequence_name, sample_ID) %>%
   summarize(RPKMF = mean(RPKMF)) %>%
-  pivot_wider(names_from = sequence_name, values_from = RPKMF, values_fill = 0)
+  pivot_wider(names_from = sequence_name, values_from = RPKMF, values_fill = 0)  # Convert the data to a wide format suitable for t-SNE
 
-sampleID_l <- seqname_sID_wide_dt$sample_ID
+sampleID_l <- seqname_sID_wide_dt$sample_ID  # Store sample IDs for later use
+seqname_sID_wide_dt <- seqname_sID_wide_dt %>% subset(select = -sample_ID)  # Remove sample IDs from data to prepare for t-SNE
 
-seqname_sID_wide_dt <- seqname_sID_wide_dt %>% subset(select = -sample_ID)
+# Perform principal component analysis (PCA) before t-SNE to reduce dimensionality and improve t-SNE performance
+tephi_prcomp1 <- prcomp(log10(seqname_sID_wide_dt + 1))  # Apply log transformation to reduce skewness and stabilize variance
 
-##
-tephi_prcomp1 <- prcomp(log10(seqname_sID_wide_dt+1))
+# Execute t-SNE on PCA results
+emb <- Rtsne::Rtsne(tephi_prcomp1$x[,1:10])  # Use the first 10 principal components for t-SNE
+embb <- emb$Y  # Extract t-SNE embeddings
+rownames(embb) <- sampleID_l  # Assign row names to the embeddings for identification
 
-emb <- Rtsne::Rtsne(tephi_prcomp1$x[,1:10])
+embb_df <- as.data.frame(embb)  # Convert matrix to data frame for easier handling
+embb_dt <- setDT(embb_df, keep.rownames = "sample_ID")  # Convert to data.table with sample IDs
+embb_dt <- merge(embb_dt, comb_metadata_table, by ="sample_ID")  # Merge t-SNE results with metadata for contextual information
+embb_dt$Date <- as.Date(embb_dt$Date, "%m-%d-%Y")  # Convert date strings to Date objects
 
-embb <- emb$Y
-
-rownames(embb) <- sampleID_l
-
-embb_df <- as.data.frame(embb)
-
-embb_dt <- setDT(embb_df, keep.rownames = "sample_ID")
-
-embb_dt <- merge(embb_dt, comb_metadata_table, by ="sample_ID")
-
-#embb_dt$City_Site <- str_c(embb_dt$City, ", ", embb_dt$Site)
-
-embb_dt$Date <- as.Date(embb_dt$Date, "%m-%d-%Y")
-
-# 
-# # Prepare data for tSNE
-# 
-# comb_tax_table$RPKMF <- as.numeric(comb_tax_table$RPKMF)
-# 
-# seqname_sID_wide_dt <- 
-#   comb_tax_table %>% 
-#   subset(select = c("sequence_name", "sample_ID", "RPKMF")) %>%
-#   distinct(sequence_name, sample_ID, RPKMF) %>%
-#   group_by(sequence_name, sample_ID) %>%
-#   summarize(RPKMF = mean(RPKMF)) %>%
-#   pivot_wider(names_from = sequence_name, values_from = RPKMF, values_fill = 0)
-# 
-# sampleID_l <- seqname_sID_wide_dt$sample_ID
-# 
-# seqname_sID_wide_dt <- seqname_sID_wide_dt %>% subset(select = -sample_ID)
-# 
-# ##
-# tephi_prcomp1 <- prcomp(log10(seqname_sID_wide_dt+1))
-# 
-# emb <- Rtsne::Rtsne(tephi_prcomp1$x[,1:10])
-# 
-# embb <- emb$Y
-# 
-# rownames(embb) <- sampleID_l
-# 
-# embb_df <- as.data.frame(embb)
-# 
-# embb_dt <- setDT(embb_df, keep.rownames = "sample_ID")
-# 
-# embb_dt <- merge(embb_dt, comb_metadata_table, by ="sample_ID")
-# 
-# #embb_dt$City_Site <- str_c(embb_dt$City, ", ", embb_dt$Site)
-# 
-# embb_dt$Date <- as.Date(embb_dt$Date, "%m-%d-%Y")
-# 
-# as.Date_origin <- function(x){
-#   as.Date(x, origin = '1970-01-01')
-# }
-# 
-# embb_dt$City_Date <- str_c(embb_dt$City, ", ", embb_dt$Date)
-# 
-# 
-# 
-
+# Create an animated plot of t-SNE results over time using ggplot2 and gganimate
 anim_date_tsnep <- embb_dt %>%
   arrange(Date) %>%
-  ggplot(aes(x=V1, y=V2, color=as.integer(Date), group = Site)) +
+  ggplot(aes(x = V1, y = V2, color = as.integer(Date), group = Site)) +
   geom_point(size = 3, alpha = 0.8) +
   geom_path(linewidth = 1.1, alpha = 0.8) +
-  scale_color_gradient(low = "#FDD262",
-                       high = "#3F3F7B") +
-  theme_bw() +
-  facet_wrap(~City) +
-  labs(x="t-SNE 1", y="t-SNE 2") +
-  transition_reveal(along = as.integer(Date)) 
+  scale_color_gradient(low = "#FDD262", high = "#3F3F7B") +  # Color gradient for visual appeal
+  theme_bw() +  # Use a minimal theme for clarity
+  facet_wrap(~City) +  # Facet by city to compare different locations
+  labs(x = "t-SNE 1", y = "t-SNE 2") +  # Label axes
+  transition_reveal(along = as.integer(Date))  # Animate transitions along the Date
 
-
-# 
-# 
-# anim_date_tsnep <- embb_dt %>%
-#   arrange(Date) %>%
-#   ggplot(aes(x=V1, y=V2, color=as.integer(Date), group = Site)) +
-#   geom_point(size = 3, alpha = 0.8) +
-#   geom_path(linewidth = 1.1, alpha = 0.8) +
-#   scale_color_gradient(low = "#FDD262",
-#                        high = "#3F3F7B", labels=as.Date_origin, name = "Date") +
-#   theme_bw() +
-#   facet_wrap(~City) +
-#   labs(x="t-SNE 1", y="t-SNE 2") +
-#   transition_reveal(along = as.integer(Date)) 
-
-
-
-
-
-
-
-
-##### preparing data to make a pulldown to check any virus species
-species_abund_dt <- merge(comb_tax_table, comb_metadata_table, 
-                          by = "sample_ID") %>%
+# Prepare data for species abundance analysis over time in various cities
+# This block calculates the abundance of different virus species and visualizes changes over time
+species_abund_dt <- merge(comb_tax_table, comb_metadata_table, by = "sample_ID") %>%
   mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
   group_by(City) %>%
   filter(n_distinct(Week) >= 3) %>%
   ungroup() %>%
   group_by(Site, species, Week) %>%
-  summarize(RPKMS = sum(RPKMF),
-            City = first(City)) %>%
+  summarize(RPKMS = sum(RPKMF), City = first(City)) %>%
   ungroup() %>%
   group_by(City, species, Week) %>%
   summarize(RPKMFS = mean(RPKMS)) %>%
   ungroup() %>%
-  complete(nesting(Week, City), species, fill = list(RPKMFS=0)) %>%
+  complete(nesting(Week, City), species, fill = list(RPKMFS = 0)) %>%
   group_by(City, species) %>%
   arrange(City, species, Week) %>%
   mutate(moving_average = ma(RPKMFS)) %>%
   ungroup()
 
-
+# Final processing and visualization of prevalent species data
 prevalent_sp_dt <- merge(species_abund_dt, city_dates, by = c("City", "Week")) %>%
   group_by(species) %>%
   mutate(nonzero = sum(RPKMFS != 0)) %>%
-  filter(nonzero >=10) %>%
+  filter(nonzero >= 10) %>%  # Filter to include only species with significant presence
   select(-nonzero) %>%
   ungroup() %>%
   arrange(City, species, Week)
-# 
-# 
-# species_abund_dt <- merge(comb_tax_table, comb_metadata_table, 
-#                           by = "sample_ID") %>%
-#   mutate(Week = floor_date(Date, "weeks", week_start = 1)) %>%
-#   group_by(City) %>%
-#   filter(n_distinct(Week) >= 3) %>%
-#   ungroup() %>%
-#   group_by(Site, species, Week) %>%
-#   summarize(RPKMS = sum(RPKMF),
-#             City = first(City)) %>%
-#   ungroup() %>%
-#   group_by(City, species, Week) %>%
-#   summarize(RPKMFS = mean(RPKMS)) %>%
-#   ungroup() %>%
-#   complete(nesting(Week, City), species, fill = list(RPKMFS=0)) %>%
-#   group_by(City, species) %>%
-#   arrange(City, species, Week) %>%
-#   mutate(moving_average = ma(RPKMFS)) %>%
-#   ungroup()
-# 
-# 
-# prevalent_sp_dt <- merge(species_abund_dt, city_dates, by = c("City", "Week")) %>%
-#   group_by(species) %>%
-#   mutate(nonzero = sum(RPKMFS != 0)) %>%
-#   filter(nonzero >=10) %>%
-#   select(-nonzero) %>%
-#   ungroup() %>%
-#   arrange(City, species, Week)
-
-
-
 
