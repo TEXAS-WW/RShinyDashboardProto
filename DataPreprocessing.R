@@ -61,18 +61,16 @@ ma <- function(x, n = 3) {
 
 # Load data related to Wastewater Treatment Plant (WWTP) locations
 # This section reads multiple Excel files containing site coding, merges them, and standardizes column names
-WWTP_files <- list.files(sprintf(
-  "%s/Data/site_coding", 
-  find_rstudio_root_file()), 
-  pattern = "location.*\\.xlsx$", full.names = TRUE)
+WWTP_files <- list.files("Data/site_coding", 
+                         pattern = "location.*\\.xlsx$", full.names = TRUE)
 WWTP <- rbindlist(lapply(WWTP_files, read_excel), fill = TRUE)
 WWTP <- as.data.frame(WWTP)
 colnames(WWTP) = c("State", "County", "City", "WWTP", "lat", "lon", "county_centroid_lat", "county_centroid_lon", "city_centroid_lat",
                    "city_centroid_lon", "Radius", "Color", "Weight", "FillOpacity")
 
 # Read and replace real site names with codes for anonymization
-code_dt <- read_excel(sprintf("%s/Data/site_coding/WWTP_codes1.xlsx", find_rstudio_root_file()))
-abbr_dt <- read_excel(sprintf("%s/Data/site_coding/Sites_and_abbreviations.xlsx", find_rstudio_root_file()))
+code_dt <- read_excel("Data/site_coding/WWTP_codes1.xlsx")
+abbr_dt <- read_excel("Data/site_coding/Sites_and_abbreviations.xlsx")
 
 # Load US state boundaries and filter for Texas
 us_states <- states()
@@ -92,16 +90,13 @@ merged_CountyWWTP$Color <- replace(merged_CountyWWTP$Color, is.na(merged_CountyW
 merged_CountyWWTP$totalWWTP <- replace(merged_CountyWWTP$totalWWTP, is.na(merged_CountyWWTP$totalWWTP), 0)
 
 # Read and process metadata for taxonomical and genomic data
-tax_files <- list.files(sprintf(
-  "%s/Data/taxonomical_profiles", 
-  find_rstudio_root_file()), 
+tax_files <- list.files(
+  "Data/taxonomical_profiles", 
   pattern = "*.tax.tsv", full.names = TRUE)
 comb_tax_table <- rbindlist(lapply(tax_files, fread))
 comb_tax_table <- as.data.frame(comb_tax_table)
-metadata_files <- list.files(sprintf(
-  "%s/Data/metadata", 
-  find_rstudio_root_file()), 
-  pattern = "*.xlsx", full.names = TRUE)
+metadata_files <- list.files("Data/metadata", 
+                             pattern = "*.xlsx", full.names = TRUE)
 comb_metadata_table <- rbindlist(lapply(metadata_files, read_excel))
 comb_metadata_table <- as.data.frame(comb_metadata_table)
 colnames(comb_metadata_table) = c("sample_ID", "Site", "City", "Date", "Flow", "PoolID")
@@ -115,10 +110,8 @@ comb_metadata_table <- comb_metadata_table %>%
   select(-c(Code, PoolID))
 
 # Read genome coverage data and merge with taxonomical profiles
-coverage_files <- list.files(sprintf(
-  "%s/Data/genome_coverage", 
-  find_rstudio_root_file()), 
-  pattern = "*.mean_cov.tsv", full.names = TRUE)
+coverage_files <- list.files("Data/genome_coverage", 
+                             pattern = "*.mean_cov.tsv", full.names = TRUE)
 comb_coverage_table <- rbindlist(
   lapply(coverage_files, 
          fread, header = FALSE, 
@@ -126,10 +119,8 @@ comb_coverage_table <- rbindlist(
 comb_coverage_table <- as.data.frame(comb_coverage_table)
 
 # Load qPCR data, format, and prepare for analysis
-qPCR_files <- list.files(sprintf(
-  "%s/Data/qPCR", 
-  find_rstudio_root_file()), 
-  pattern = "*.csv", full.names = TRUE)
+qPCR_files <- list.files("Data/qPCR", 
+                         pattern = "*.csv", full.names = TRUE)
 comb_qPCR_table <- rbindlist(lapply(qPCR_files, fread, colClasses = "character"))
 comb_qPCR_table <- as.data.frame(comb_qPCR_table)
 comb_qPCR_table$date_of_collection <- as.POSIXct(comb_qPCR_table$date_of_collection)
@@ -166,9 +157,7 @@ WWTP_citieslength <- length(unique(total_cities$City))
 ### Coordinates, Texas Cities with WWTPs in TEPHI program
 
 invisible(capture.output(
-  cities <- st_read(sprintf(
-    "%s/Data/geographical_files/Texas_Cities/City.shp", 
-    find_rstudio_root_file())) %>% 
+  cities <- st_read("Data/geographical_files/Texas_Cities/City.shp") %>% 
     filter(CITY_NM %in% WWTP_cities)%>% 
     st_cast("POINT") %>% as("Spatial") 
 ))
@@ -195,9 +184,7 @@ WWTP_cities <- gsub(", TX", "", WWTP_cities[[1]])  # Remove state suffix for cle
 # Coordinate handling for Texas cities involved in the TEPHI program
 # This part reads shapefiles for Texas cities, filters them by cities with WWTPs, and converts them to spatial points for mapping
 invisible(capture.output(
-  cities <- st_read(sprintf(
-    "%s/Data/geographical_files/Texas_Cities/City.shp", 
-    find_rstudio_root_file())) %>% 
+  cities <- st_read("Data/geographical_files/Texas_Cities/City.shp") %>% 
     filter(CITY_NM %in% WWTP_cities) %>% 
     st_cast("POINT") %>% as("Spatial")  # Convert shape data to simple POINT type for easier handling
 ))
@@ -317,22 +304,22 @@ trend_major_path_dt <- major_path_expand_dt %>%
   group_by(City, species) %>%
   mutate(most_recent_week = last(Week),  # Identify the most recent week of data
          four_weeks_before = (most_recent_week - 28)) %>% # Calculate the date four weeks prior for comparison
-filter(Week == most_recent_week | Week == four_weeks_before) %>% # Filter to only these two points
-filter(n() == 2)  %>% # Ensure both time points are present for each city/species pair
-mutate(observation_label = case_when(
-  Week == most_recent_week ~ "Most Recent Week",
-  Week == four_weeks_before ~ "Four Weeks Earlier",
-  TRUE ~ "other"),
-  difference = (moving_average[Week == most_recent_week] / moving_average[Week == four_weeks_before]) - 1) %>% # Calculate the percentage difference between the two time points
-mutate(Interpretation = case_when(
-  moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference > 0.25 ~ "Increase from Baseline",
-  moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference < -0.25 ~ "Decrease from Baseline",
-  moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference >= -0.25 & difference <= 0.25 ~ "Little Change",
-  moving_average[Week == most_recent_week] == 0 & moving_average[Week == four_weeks_before] == 0  ~ "Constant at 0",
-  moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] == 0  ~ "(Re)-emerging from 0",
-  moving_average[Week == most_recent_week] == 0 & moving_average[Week == four_weeks_before] > 0  ~ "Going to 0",
-  TRUE ~ "other"
-))  # Interpret the changes for reporting in the table
+  filter(Week == most_recent_week | Week == four_weeks_before) %>% # Filter to only these two points
+  filter(n() == 2)  %>% # Ensure both time points are present for each city/species pair
+  mutate(observation_label = case_when(
+    Week == most_recent_week ~ "Most Recent Week",
+    Week == four_weeks_before ~ "Four Weeks Earlier",
+    TRUE ~ "other"),
+    difference = (moving_average[Week == most_recent_week] / moving_average[Week == four_weeks_before]) - 1) %>% # Calculate the percentage difference between the two time points
+  mutate(Interpretation = case_when(
+    moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference > 0.25 ~ "Increase from Baseline",
+    moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference < -0.25 ~ "Decrease from Baseline",
+    moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] > 0 & difference >= -0.25 & difference <= 0.25 ~ "Little Change",
+    moving_average[Week == most_recent_week] == 0 & moving_average[Week == four_weeks_before] == 0  ~ "Constant at 0",
+    moving_average[Week == most_recent_week] > 0 & moving_average[Week == four_weeks_before] == 0  ~ "(Re)-emerging from 0",
+    moving_average[Week == most_recent_week] == 0 & moving_average[Week == four_weeks_before] > 0  ~ "Going to 0",
+    TRUE ~ "other"
+  ))  # Interpret the changes for reporting in the table
 
 trend_major_path_dt %>%
   select(c(City, Week, most_recent_week, species, difference, Interpretation, moving_average)) %>%
@@ -354,7 +341,7 @@ trend_major_path_dt %>%
     TRUE ~ difference
   ),
   difference = difference * 100)  %>% # Convert difference to a percentage for clarity
-arrange(desc(difference))  # Sort by difference to highlight significant changes
+  arrange(desc(difference))  # Sort by difference to highlight significant changes
 
 
 # Calculate tSNE for visualizing data complexity and relationships
