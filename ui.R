@@ -5,19 +5,17 @@ source("screen_detector_script.R") # Loads a script to adjust UI based on the sc
 # Define the main UI layout of the Shiny app
 
 ui <- fluidPage(
-  theme = shinytheme("cerulean"), # Apply the 'cerulean' theme from shinythemes package for a consistent look
-  includeCSS("www/tephi_ww_dashboard.css"), # Include custom CSS for additional styling, influencing the overall aesthetics
+  theme = shinytheme("cerulean"),
+  includeCSS("www/tephi_ww_dashboard.css"),
   
-  # HTML tags for including additional resources and styles
   tags$head(
-    tags$link(rel = "stylesheet", type = "text/css", href = "tephi_ww_dashboard.css"), # External CSS link for custom styles specific to this dashboard
+    tags$link(rel = "stylesheet", type = "text/css", href = "tephi_ww_dashboard.css"),
     tags$style(HTML(
-      ".content-wrapper, .right-side {padding-right: 0px;}" # Specific CSS styles to adjust padding for content-wrapper and right-side elements, enhancing layout fit
+      ".content-wrapper, .right-side {padding-right: 0px;}"
     ))
   ),
-  tags$script(HTML(screen_detector_script)), # Custom JavaScript embedded directly for handling screen size adjustments dynamically
+  tags$script(HTML(screen_detector_script)),
   
-  # Main container that wraps all tab panels
   tags$div(id = "wrappingEverything",
            tabsetPanel(
              # First main tab for visualizing collection sites on a map
@@ -78,53 +76,61 @@ ui <- fluidPage(
                      )
                    )
                  ),
-
+                 
                  # Sub-tab for Important Pathogens analysis
                  tabPanel(
-                   "Important Pathogens",
-                   tags$h2(tags$b("Comprehensive Deep Sequencing: Important Pathogens by City and by Species")), # Header describing the content of this tab
-                   tags$h5("The upper plot shows the city-wide pathogen trends over time. Different lines represent the relative abundance of each pathogen in the sampled wastewater."), # Explanation of what the first plot represents
-                   tags$h5("The lower plot displays the sample history of each site and its overall virus diversity. Use the controls on the left to adjust the view."), # Details about the second plot
-                   tags$hr(), # Visual separator
+                   "Important Pathogens",  # The tab panel for important pathogens
+                   tags$h2(tags$b("Comprehensive Deep Sequencing: Important Pathogens by City and by Species")),  # Header for the section, bolded
+                   tags$h5("The upper plot shows the city-wide pathogen trends over time. quantified using the metric RPKMF (Reads Per Kilobase per Million Fragments). This metric normalizes the number of sequence reads of a particular pathogen to account for differences in sequencing depth and the length of the genome."),  # Description of the upper plot
+                   tags$h5("Reads: Short sequences of DNA generated during sequencing. Per Kilobase: Normalizes the read count to the length of the genome. Per Million Fragments: Normalizes the read count to the total number of reads generated."),  # Explanation of the terms used in the plot
+                   tags$h5("The lower plot displays the y axis fixed to show total abundance."),  # Description of the lower plot
+                   tags$hr(),  # Horizontal rule for visual separation
+                   
                    fluidRow(
                      column(
-                       width = 2, # Smaller column for control elements
-                       align = "left", # Left alignment for better visual structure
+                       width = 2,  # Set the width of the column to 2 (out of 12)
+                       align = "left",  # Align the contents to the left
                        box(
-                         title = "Control Panel", # Label for the box containing input controls
-                         status = "primary", # Designates the importance of this box with a primary color
-                         solidHeader = TRUE, # Ensures the header is visually distinct
+                         title = "Control Panel",  # Title of the box
+                         status = "primary",  # Style the box with primary color
+                         solidHeader = TRUE,  # Make the header solid
                          radioButtons(
-                           "cdsViewType", # Radio buttons for user to select view type
-                           "", # No label needed here for a cleaner look
-                           choices = list("View By City" = 'city', "View By Variant" = 'variant'), # Options for user selection
-                           selected = 'city', # Default selected view type
-                           inline = TRUE # Display options in a row (inline) for compactness
+                           "cdsViewType",  # Input ID for the radio buttons
+                           "",  # No label for the radio buttons
+                           choices = list("View By City" = 'city', "View By Variant" = 'variant'),  # Choices for the radio buttons
+                           selected = 'city',  # Default selected choice
+                           inline = TRUE  # Display choices inline
                          ),
-                         uiOutput("cdsSelectionUI"), # Dynamic UI output for further user interaction options
-                         checkboxInput("cdsPlotToggle", "Single/Multiple Plot", FALSE), # Checkbox to toggle between single and multiple plot views
+                         div(class = "large-dropdown", uiOutput("cdsSelectionUI")),  # Dynamic UI output wrapped in a div with a class for styling
                          airDatepickerInput(
-                           "cdsDateRange", # Component ID
-                           "Select Date Range:", # Label
-                           value = c(minDate_cds, maxDate_cds), # Default value set to the range of dates available in the data
-                           range = TRUE, # Enables range selection
-                           update_on = "close", # Updates the input value when the datepicker closes
-                           todayButton = TRUE, # Button to select today's date quickly
-                           clearButton = TRUE, # Button to clear the selected date
-                           autoClose = TRUE, # Datepicker closes automatically upon date selection
-                           toggleSelected = TRUE # Prevents reselecting the start date as the end date
+                           "cdsDateRange",  # Input ID for the date range picker
+                           "Select Date Range:",  # Label for the date range picker
+                           value = c(minDate_cds, maxDate_cds),  # Default selected date range
+                           range = TRUE,  # Enable range selection
+                           update_on = "close",  # Update value on close
+                           todayButton = TRUE,  # Show button for selecting today's date
+                           clearButton = TRUE,  # Show button for clearing the selection
+                           autoClose = TRUE,  # Automatically close the picker after selection
+                           toggleSelected = TRUE  # Prevent reselecting the start date as the end date
                          )
                        )
                      ),
                      column(
-                       width = 10, # Larger column for displaying plots
-                       align = "left", # Left alignment for the content
+                       width = 10,  # Set the width of the column to 10 (out of 12)
+                       plotlyOutput("cds_TrendPlot"),  # Output for the main trend plot
+                       plotlyOutput("cds_TrendPlot_Y01")  # Output for the secondary plot with a fixed y-axis
+                     )
+                   ),
+                   
+                   fluidRow(
+                     column(
+                       width = 12,  # Set the width of the column to 12 (full width)
+                       align = "left",  # Align the contents to the left
                        box(
-                         title = "", # No title for simplicity
-                         status = "primary", # Indicates the box's importance with a primary color
-                         solidHeader = TRUE, # Solid header to differentiate from other content
-                         fluidRow(plotlyOutput("cds_TrendPlot")), # Placeholder for trend plot output using Plotly
-                         div(class = 'cds-daterange-text', textOutput("cds_DateRange")) # Displays selected date range dynamically
+                         title = "",  # No title for the box
+                         status = "primary",  # Style the box with primary color
+                         solidHeader = TRUE,  # Make the header solid
+                         div(class = 'cds-daterange-text', textOutput("cds_DateRange"))  # Text output for displaying the selected date range
                        )
                      )
                    )
@@ -141,14 +147,6 @@ ui <- fluidPage(
                  ),
                  
                  
-                 # Sub-tab 4: Genome Coverage of Important Pathogens
-                 tabPanel(
-                   "Genome Coverage of Important Pathogens",
-                   tags$h2(tags$b("Comprehensive Deep Sequencing: Genome Coverage of Important Pathogens")),  # Heading for this section, emphasizing its focus on genome coverage.
-                   tags$h5("Fully searchable and sortable table. Percent covered represents the fraction of the genome detected in the sequencing data. Accession number is the unique identifier for that genome in NCBI."),  # Explanation of what data the table contains and how to interpret it.
-                   tags$hr(),  # Horizontal rule for separating content visually.
-                   reactableOutput("cdsImportantPathogensTable")  # Placeholder for a table displaying genomic coverage data.
-                 ),
                  
                  
                  # Sub-tab 5: Community Similarity Chart (t-SNE)
@@ -192,51 +190,51 @@ ui <- fluidPage(
                      )
                    )
                  )
-                )
-               ),
-                 
-                 
-                 # Define the UI components for the third tab: qPCR
+               )
+             ),
+             
+             
+             # Define the UI components for the third tab: qPCR
+             tabPanel(
+               "qPCR (Targeted)",
+               tags$head(tags$style(
+                 HTML(
+                   ".tabbable > .nav.nav-tabs { display: flex; justify-content: center; }"  # Custom CSS to center the navigation tabs within this panel.
+                 )
+               )),
+               
+               tabsetPanel(
+                 # Sub-tab 1: Specific Pathogens Trend for qPCR
                  tabPanel(
-                   "qPCR (Targeted)",
-                   tags$head(tags$style(
-                     HTML(
-                       ".tabbable > .nav.nav-tabs { display: flex; justify-content: center; }"  # Custom CSS to center the navigation tabs within this panel.
-                     )
-                   )),
-                   
-                   tabsetPanel(
-                     # Sub-tab 1: Specific Pathogens Trend for qPCR
-                     tabPanel(
-                       "Specific Pathogens Trend for qPCR",
-                       tags$h2(tags$b("Quantification of Specific Pathogens in Wastewater")),  # Main title for this subsection.
-                       tags$h5("This approach provides fast, quantitative measurements on a variety of known virus pathogens. Only recently detected pathogens from the targeted list are shown."),  # Description of the qPCR methodology and its focus.
-                       tags$hr(),  # Visual separator.
-                       fluidRow(
-                         column(
-                           width = 2,
-                           align = "left",
-                           box(
-                             title = "Control Panel",  # Box for input controls.
-                             inline = TRUE,  # Option for inline display of contents.
-                             status = "primary",  # Styling option for importance.
-                             solidHeader = TRUE,  # Visual distinction for the header.
-                             radioButtons("qpcrViewType", "", choices = list("View By City" = 'city', "View By Variant" = 'variant'), selected = 'city', inline = TRUE),  # Radio buttons for selecting data view type.
-                             uiOutput("qpcrSelectionUI"),  # Dynamic UI output based on selection.
-                             checkboxInput("qpcrPlotToggle", "Single/Multiple Plot", FALSE),  # Checkbox to toggle plot views.
-                             sliderInput("qpcrDateRange", "Select Date Range:", min = minDate_qpcr, max = maxDate_qpcr, value = c(minDate_qpcr, maxDate_qpcr), timeFormat = "%Y-%m-%d"),  # Slider for date range selection.
-                             checkboxGroupInput("qpcrQuickDateRange", "Quick Date Range:", choices = list("Past 6 Months" = "6m"), selected = NULL)  # Quick selection for date ranges.
-                           )
-                         ),
-                         column(
-                           width = 10,
-                           align = "left",
-                           box(
-                             title = "",  # No title for a cleaner look.
-                             status = "primary",  # Box styling indicating importance.
-                             solidHeader = TRUE,  # Ensures header is visually distinct.
-                             fluidRow(plotlyOutput("qpcr_TrendPlot")),  # Output for displaying the qPCR trend plot.
-                             div(class = 'qpcr_daterange-text', textOutput("qpcr_DateRange"))  # Div to display selected date range.
+                   "Specific Pathogens Trend for qPCR",
+                   tags$h2(tags$b("Quantification of Specific Pathogens in Wastewater")),  # Main title for this subsection.
+                   tags$h5("This approach provides fast, quantitative measurements on a variety of known virus pathogens. Only recently detected pathogens from the targeted list are shown."),  # Description of the qPCR methodology and its focus.
+                   tags$hr(),  # Visual separator.
+                   fluidRow(
+                     column(
+                       width = 2,
+                       align = "left",
+                       box(
+                         title = "Control Panel",  # Box for input controls.
+                         inline = TRUE,  # Option for inline display of contents.
+                         status = "primary",  # Styling option for importance.
+                         solidHeader = TRUE,  # Visual distinction for the header.
+                         radioButtons("qpcrViewType", "", choices = list("View By City" = 'city', "View By Variant" = 'variant'), selected = 'city', inline = TRUE),  # Radio buttons for selecting data view type.
+                         uiOutput("qpcrSelectionUI"),  # Dynamic UI output based on selection.
+                         checkboxInput("qpcrPlotToggle", "Single/Multiple Plot", FALSE),  # Checkbox to toggle plot views.
+                         sliderInput("qpcrDateRange", "Select Date Range:", min = minDate_qpcr, max = maxDate_qpcr, value = c(minDate_qpcr, maxDate_qpcr), timeFormat = "%Y-%m-%d"),  # Slider for date range selection.
+                         checkboxGroupInput("qpcrQuickDateRange", "Quick Date Range:", choices = list("Past 6 Months" = "6m"), selected = NULL)  # Quick selection for date ranges.
+                       )
+                     ),
+                     column(
+                       width = 10,
+                       align = "left",
+                       box(
+                         title = "",  # No title for a cleaner look.
+                         status = "primary",  # Box styling indicating importance.
+                         solidHeader = TRUE,  # Ensures header is visually distinct.
+                         fluidRow(plotlyOutput("qpcr_TrendPlot")),  # Output for displaying the qPCR trend plot.
+                         div(class = 'qpcr_daterange-text', textOutput("qpcr_DateRange"))  # Div to display selected date range.
                            )
                          )
                        )
