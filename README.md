@@ -2,6 +2,7 @@
 
 ## Introduction
 This Shiny dashboard is designed to generate an interactive dashboard that replicates the TEPHI report and develops/enhances visualization and analysis for the TEPHI WW Project. 
+This version is the one that will exists on the deployment server. The source code for this repo should be coming from the statistics team.
 
 ## Features
 
