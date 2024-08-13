@@ -1,140 +1,113 @@
-/* Set witdth of the dashboard header title component */
-.navbar .navbar-brand {
-    width: 270px !important;
-    text-align: left !important;
-    overflow: visible !important;
-    white-space: normal !important;
-}
-
-button.btn-primary {
-    color: white;
-}
-
-/* Remove hide button for sidebar */
-/* .sidebar-toggle {
-    visibility: hidden !important;
-}*/
-
-/* Set fixed width of the main sidebar */
-.main-sidebar {
-    width: 270px;
-    min-height: 100vh;
-    height: 100vh;
-    position: fixed;
-}
-
-/* Correct start position for tab content to account for wider sidebar */
-.content-wrapper, .right-side {
-    padding-left: 40px; /* This should match the width of your sidebar */
-}
-
-/* Anchor elements to the bottom of the sidebar */
-#bottom-anchor {
-  position: absolute;
-  bottom: 20px;  /* Adjust as needed */
-  width: 100%;
-  padding: 0 10px;  /* Adjust padding to align with other sidebar content */
-}
-
-/* Create spacing around sidebar selection buttons */
-section.sidebar .shiny-bound-input.action-button, section.sidebar .shiny-bound-input.action-link {
-    margin: 6px 15px 6px 12px;
-    display: block;
-}
-
-.form-group {
-    margin-bottom: 0px;
-}
-
-/* Change the background color and text color of the slider range labels */
-.irs--shiny .irs-from, .irs--shiny .irs-to, .irs--shiny .irs-single {
-    color: #000000;
-    text-shadow: none;
-    padding: 1px 3px;
-    background-color: #ffffff;
-    border-radius: 3px;
-    font-size: 11px;
-    line-height: 1.333;
-}
-
-/* Enable text wrapping in the dropdown notifications menu */
-.navbar-nav>.messages-menu>.dropdown-menu, .navbar-nav>.notifications-menu>.dropdown-menu, .navbar-nav>.tasks-menu>.dropdown-menu {
-    width: 300px;
-}
-
-/* Change color of slider bar to match color pallet for app */
-.irs--shiny .irs-bar {
-    top: 25px;
-    height: 8px;
-    border-top: 1px solid #3C8DBC;
-    border-bottom: 1px solid #3C8DBC;
-    background: #3C8DBC;
-}
-
-/* Set the colors for the box filled headers */
-.box.box-solid.box-primary>.box-header {
-    color: #fff;
-    background: #3c8dbc;
-    background-color: #3c8dbc;
-}
-
-.box.box-solid.box-info>.box-header {
-    color: #fff;
-    background: #62a3c9;
-    background-color: #62a3c9;
-}
-
-
-
-
-.loader {
-    border: 16px solid #f3f3f3; /* Light grey */
-    border-top: 16px solid #3498db; /* Blue */
-    border-radius: 50%;
-    width: 150px;
-    height: 150px;
-    animation: spin 2s linear infinite;
-
-    position: fixed;
-    top: 40%;
-    left: 50%;
-
-    z-index: 2;
+ /* Apply a light gray background and padding to all select input fields */
+  
+  .selectize-input {
+    background-color: #f8f9fa !important;
+    padding: 5px !important;
+    border: none !important;
+    border-radius: 4px;
   }
   
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+  /* Style the radio buttons */
+  .shiny-options-group {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  
+  /* Style the text between radio buttons */
+  .shiny-options-group label {
+    margin-right: 22px;
+  }
+  
+  /* Change the color of checked radio buttons */
+input:radio:checked + label {
+  color: green !important;
+}
+  
+  /* Style the plot title */
+  .js-plotly-plot .plotly .gtitle {
+    font-size: 1.2em;
+    color: #1a1a1a;
+    font-weight: bold;
+  }
+  
+  /* Apply consistent font styling to all tabs */
+  .tabbable > .nav > li > a {
+    font-size: 1.1em;
+    color: #1a1a1a;
+    font-weight: normal;
+  }
+  /* Apply a light background and padding to the selection inputs */
+.selection-inputs {
+  background-color: #f8f9fa !important;
+  padding: 5px !important;
+}
+
+ .shiny-output-error-validation {
+ font-size: 20px;  /* Adjust size as needed */
+ font-weight: bold;
   }
 
+  /* Style the date picker input */
+  .datepicker-dropdown {
+    width: auto !important;
+  }
+  .datepicker .datepicker-days {
+    width: auto !important;
+  }
+  
+  
+  trendPlot{
+
+  }
+  
+    
+  cds_TrendPlot{
+  width: 1500px!important;
+  height: 700px!important;
+  }
+      
+  cds_TrendPlot_zoomed{
+  height:700px !important;
+  width: 100% !important;
+  }
+      
+  collectionDatesPlot_cds{
+  width: 1500px !important;
+  height: 1000px !important;
+
+  }
+  
+  .cds-daterange-text {
+  font-size: 20px;  /* Adjust size as needed */
+  font-weight: bold;  /* Makes the text bold */
+  color: #333;  /* Change the text color */
+  /* Add any other CSS properties here */
+                                    }
+ 
+     
+  qpcr_TrendPlot{
+  height:700px !important;
+  width: 100% !important;
+  }
+  
 
 
-  .disabledControl {
-    opacity: 0.4;
-    pointer-events: none;
+  city_tsnep{
+  height:700px !important;
+  width: 100% !important;
   }
 
-
-/* Set bolding for use with the datatable function of the proportion_change tab*/
-/*.dt-body-bold {
-  font-weight: bold;
-}
-
-/* Override the primary status background color */
-.box.box-solid.box-primary>.box-header {
-    background: none !important;
-    background-color: transparent !important;
-    color: inherit !important;
-    border: none !important;
-}
-
-.box.box-primary {
-    background: none !important;
-    background-color: transparent !important;
-    border: none !important;
-}
-
-
-
-/*Bottom of file*/
-
+  animation{
+  height:700px !important;
+  width: 100% !important;
+  }
+  
+.qpcr-daterange-text {
+font-size: 20px;  /* Adjust size as needed */
+font-weight: bold;  /* Makes the text bold */
+color: #333;  /* Change the text color */
+/* Add any other CSS properties here */
+                                  }
+             

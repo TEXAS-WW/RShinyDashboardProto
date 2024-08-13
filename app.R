@@ -1,17 +1,9 @@
 
 #source("DataPreprocessing.R")
-library(shiny)
-dirpath= file.path(getwd(), 'www')
-addResourcePath(prefix = 'www', directoryPath = dirpath)
-
-
-
-###########################################################
-## Read in Data, Shapefiles and Mapped Objects
-###########################################################
-
 # Load required packages for data manipulation and visualization
-#source("variables.R")  # Source global variables defined in external file for consistency
+source("variables.R")  # Source global variables defined in external file for consistency
+
+
 suppressPackageStartupMessages({
   # Load a series of libraries without showing any package startup messages
   library(feasts)  # For time series features
@@ -477,11 +469,6 @@ name_mapping <- c(
 # Rename the sequence_name column using the named vector
 combined_react_data_plot <- combined_react_data_plot %>%
   mutate(sequence_name = name_mapping[sequence_name])
-
-
-
-
-
 
 
 source("server.R")
